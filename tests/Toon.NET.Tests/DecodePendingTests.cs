@@ -20,7 +20,7 @@ namespace Toon.Tests
             jsonOptions: new JsonSerializerOptions(ToonSerializerOptions.Default.JsonOptions)
         );
 
-        [Fact(Skip = "Decoder pending: strict mode should reject blank lines inside list arrays")]
+        [Fact]
         public void Decode_Strict_ListArray_BlankLinesNotAllowed()
         {
             var toon = string.Join('\n', new[]
@@ -35,7 +35,7 @@ namespace Toon.Tests
             Assert.ThrowsAny<Exception>(() => ToonSerializer.Deserialize<object>(toon, StrictOpts()));
         }
 
-        [Fact(Skip = "Decoder pending: strict mode should reject extra list items beyond header length")]
+        [Fact]
         public void Decode_Strict_ListArray_NoExtraItems()
         {
             var toon = string.Join('\n', new[]
@@ -49,7 +49,7 @@ namespace Toon.Tests
             Assert.ThrowsAny<Exception>(() => ToonSerializer.Deserialize<object>(toon, StrictOpts()));
         }
 
-        [Fact(Skip = "Decoder pending: strict mode should reject extra tabular rows beyond header length")]
+        [Fact]
         public void Decode_Strict_Tabular_NoExtraRows()
         {
             var toon = string.Join('\n', new[]
@@ -63,14 +63,14 @@ namespace Toon.Tests
             Assert.ThrowsAny<Exception>(() => ToonSerializer.Deserialize<object>(toon, StrictOpts()));
         }
 
-        [Fact(Skip = "Decoder pending: strict mode must reject indentation with TAB characters")]
+        [Fact]
         public void Decode_Strict_Indentation_NoTabsAllowed()
         {
             var toon = "[1]:\n\t- 1"; // TAB indentation
             Assert.ThrowsAny<Exception>(() => ToonSerializer.Deserialize<object>(toon, StrictOpts()));
         }
 
-        [Fact(Skip = "Decoder pending: strict mode must require indentation to be multiples of indent size")]
+        [Fact]
         public void Decode_Strict_Indentation_MustBeMultipleOfIndent()
         {
             // indent=2，但此处为1个空格，非整倍数
@@ -78,14 +78,14 @@ namespace Toon.Tests
             Assert.ThrowsAny<Exception>(() => ToonSerializer.Deserialize<object>(toon, StrictOpts()));
         }
 
-        [Fact(Skip = "Decoder pending: inline primitive arrays must match header count in strict mode")]
+        [Fact]
         public void Decode_Strict_InlinePrimitiveArray_CountMustMatch()
         {
             var toon = "nums[3]: 1,2"; // fewer values than header
             Assert.ThrowsAny<Exception>(() => ToonSerializer.Deserialize<object>(toon, StrictOpts()));
         }
 
-        [Fact(Skip = "Decoder pending: tabular rows must match header fields count in strict mode")]
+        [Fact]
         public void Decode_Strict_Tabular_FieldCountMustMatch()
         {
             var toon = string.Join('\n', new[]
@@ -98,7 +98,7 @@ namespace Toon.Tests
             Assert.ThrowsAny<Exception>(() => ToonSerializer.Deserialize<object>(toon, StrictOpts()));
         }
 
-        [Fact(Skip = "Decoder pending: quoted keys and string unescaping should be honored during parsing")]
+        [Fact]
         public void Decode_String_Unescape_And_QuotedKey()
         {
             var toon = "\"full name\": \"a\\n\\t\\r\\\"b\"";
