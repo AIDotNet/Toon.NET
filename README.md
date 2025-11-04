@@ -37,7 +37,7 @@ Token-Oriented Object Notation（TOON）的 .NET 实现，对齐 https://github.
 
 ## 安装
 
-NuGet（待发布）：
+NuGet：
 
 ```bash
 dotnet add package AIDotNet.Toon

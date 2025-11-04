@@ -127,6 +127,8 @@ internal static class Program
         var jobs = new List<Task>();
 
         int done = 0, ok = 0, fail = 0;
+        var lastUpdateTime = DateTime.UtcNow;
+        var updateLock = new object();
 
         foreach (var task in tasks)
         {
@@ -146,13 +148,32 @@ internal static class Program
                         {
                             throttle.Release();
                             var last = Interlocked.Increment(ref done);
-                            // quick counters for display (approximate)
-                            var snapOk = results.Count(r => r.Correct);
-                            var snapFail = results.Count(r => !r.Correct && !r.Answer.StartsWith("[error]"));
-                            var snapErr = results.Count(r => r.Answer.StartsWith("[error]"));
-                            ok = snapOk; fail = snapFail + snapErr;
-                            progressTask.Increment(1);
-                            progressTask.Description = $"[blue]{model}[/]  ok:[green]{ok}[/]  fail:[red]{fail}[/]  done:{last}/{totalSteps}";
+                            
+                            // 限制更新频率：每200ms更新一次，或者每完成10%任务更新一次
+                            bool shouldUpdate = false;
+                            lock (updateLock)
+                            {
+                                var now = DateTime.UtcNow;
+                                var elapsed = (now - lastUpdateTime).TotalMilliseconds;
+                                if (elapsed >= 200 || last % Math.Max(1, totalSteps / 10) == 0 || last == totalSteps)
+                                {
+                                    lastUpdateTime = now;
+                                    shouldUpdate = true;
+                                }
+                            }
+
+                            if (shouldUpdate)
+                            {
+                                // 批量计算统计信息
+                                var snapOk = results.Count(r => r.Correct);
+                                var snapFail = results.Count(r => !r.Correct && !r.Answer.StartsWith("[error]"));
+                                var snapErr = results.Count(r => r.Answer.StartsWith("[error]"));
+                                ok = snapOk; 
+                                fail = snapFail + snapErr;
+                                
+                                progressTask.Value = last;
+                                progressTask.Description = $"[blue]{model}[/]  ok:[green]{ok}[/]  fail:[red]{fail}[/]  done:{last}/{totalSteps}";
+                            }
                         }
                     }));
                 }

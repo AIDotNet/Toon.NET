@@ -33,6 +33,7 @@ internal static class ReportGenerator
         sb.AppendLine("<body>");
         sb.AppendLine("  <h1>模型基准测试综合报告</h1>");
         sb.AppendLine($"  <div class=\"hint\">测试模型：{string.Join(", ", allModels.Select(m => m.Model))} | 总样本数：{allModels.Sum(m => m.Results.Count)}</div>");
+        sb.AppendLine("  <div class=\"hint\" style=\"font-size: 0.9em; margin-top: 8px;\">📊 Token（标记）：LLM API 的基本计量单位，通常 1 Token ≈ 0.75 英文单词 或 1.5-2 个中文字符。Token 数量直接影响 API 调用成本和响应速度。</div>");
 
         // 准确率对比
         sb.AppendLine("  <h2>准确率对比</h2>");
@@ -42,7 +43,7 @@ internal static class ReportGenerator
         sb.AppendLine("  </div>");
 
         // Token 消耗对比
-        sb.AppendLine("  <h2>Token 消耗对比</h2>");
+        sb.AppendLine("  <h2>Token 消耗对比（计量单位：个）</h2>");
         sb.AppendLine("  <div class=\"grid\">");
         sb.AppendLine("    <div><h3>各模型的提示 Token 消耗（按格式）</h3><div id=\"promptTokens\" class=\"chart\"></div></div>");
         sb.AppendLine("    <div><h3>各模型的生成 Token 消耗（按格式）</h3><div id=\"completionTokens\" class=\"chart\"></div></div>");
@@ -60,7 +61,7 @@ internal static class ReportGenerator
         // 综合数据表
         sb.AppendLine("  <h2>汇总数据表</h2>");
         sb.AppendLine("  <table>");
-        sb.AppendLine("    <thead><tr><th>模型</th><th>格式</th><th>准确率 (%)</th><th>平均提示 Tokens</th><th>平均生成 Tokens</th><th>平均总 Tokens</th></tr></thead>");
+        sb.AppendLine("    <thead><tr><th>模型</th><th>格式</th><th>准确率 (%)</th><th>平均提示 Token 数</th><th>平均生成 Token 数</th><th>平均总 Token 数</th></tr></thead>");
         sb.AppendLine("    <tbody>");
         foreach (var model in allModels.OrderBy(m => m.Model))
         {
@@ -166,16 +167,16 @@ internal static class ReportGenerator
         sb.AppendLine("    Plotly.newPlot('accByTask', accByTaskTraces, { barmode: 'group', yaxis: { title: '准确率（%）', range: [0, 100] }, xaxis: { title: '任务' }, margin: { t: 20, r: 10, l: 60, b: 120 }, legend: { orientation: 'h' } }, { responsive: true });");
 
         sb.AppendLine("    const promptTokensTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => promptTokensByFormat[m][f]), name: m, type: 'bar' }));");
-        sb.AppendLine("    Plotly.newPlot('promptTokens', promptTokensTraces, { barmode: 'group', yaxis: { title: '平均提示 Tokens' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 60, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
+        sb.AppendLine("    Plotly.newPlot('promptTokens', promptTokensTraces, { barmode: 'group', yaxis: { title: '平均提示 Token 数量（个）' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
 
         sb.AppendLine("    const completionTokensTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => completionTokensByFormat[m][f]), name: m, type: 'bar' }));");
-        sb.AppendLine("    Plotly.newPlot('completionTokens', completionTokensTraces, { barmode: 'group', yaxis: { title: '平均生成 Tokens' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 60, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
+        sb.AppendLine("    Plotly.newPlot('completionTokens', completionTokensTraces, { barmode: 'group', yaxis: { title: '平均生成 Token 数量（个）' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
 
         sb.AppendLine("    const totalTokensTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => totalTokensByFormat[m][f]), name: m, type: 'bar' }));");
-        sb.AppendLine("    Plotly.newPlot('totalTokens', totalTokensTraces, { barmode: 'group', yaxis: { title: '平均总 Tokens' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 60, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
+        sb.AppendLine("    Plotly.newPlot('totalTokens', totalTokensTraces, { barmode: 'group', yaxis: { title: '平均总 Token 数量（个）' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
 
         sb.AppendLine("    const tokenBoxTraces = modelNames.map(m => ({ y: tokenBoxData[m], name: m, type: 'box', boxmean: true }));");
-        sb.AppendLine("    Plotly.newPlot('tokenBox', tokenBoxTraces, { yaxis: { title: '总 Tokens' }, margin: { t: 20, r: 10, l: 60, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
+        sb.AppendLine("    Plotly.newPlot('tokenBox', tokenBoxTraces, { yaxis: { title: 'Token 数量（个）' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });");
 
         sb.AppendLine("    Plotly.newPlot('heatModelFormat', [{ z: heatModelFormatZ, x: formats, y: modelNames, type: 'heatmap', colorscale: 'Viridis', zmin: 0, zmax: 100 }], { xaxis: { title: '格式' }, yaxis: { title: '模型' }, margin: { t: 20, r: 10, l: 100, b: 80 } }, { responsive: true });");
 
