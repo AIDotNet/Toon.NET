@@ -6,23 +6,35 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>latest</LangVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
-    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
 
     <!-- NuGet 元数据 -->
     <PackageId>Toon.NET</PackageId>
-    <Version>0.1.0</Version>
-    <Authors>Toon.NET Contributors</Authors>
+    <Title>Toon.NET</Title>
     <Description>Token-Oriented Object Notation (TOON) - a token-efficient JSON alternative for LLM prompts, .NET implementation with System.Text.Json-style API.</Description>
     <PackageProjectUrl>https://token-ai.cn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AIDotNet/Toon.NET</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <IncludeSymbols>false</IncludeSymbols>
+    <PackageTags>TOON;JSON;Serialization;System.Text.Json;LLM;Prompt;Encoding;CSharp;DotNet</PackageTags>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+
+    <!-- 打包与可复现构建 -->
+    <IncludeSymbols>true</IncludeSymbols>
+    <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+    <PublishRepositoryUrl>true</PublishRepositoryUrl>
+    <EmbedUntrackedSources>true</EmbedUntrackedSources>
+    <Deterministic>true</Deterministic>
   </PropertyGroup>
 
   <ItemGroup>
     <!-- 将 README 打包进入 NuGet，并作为包级 Readme 显示 -->
     <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- SourceLink 支持 -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.SourceLink.GitHub" Version="8.0.0" PrivateAssets="All" IncludeAssets="runtime; build; native; contentfiles; analyzers; buildtransitive" />
   </ItemGroup>
 
 </Project>
