@@ -1,8 +1,7 @@
-using System;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Toon
+namespace AIDotNet.Toon
 {
     /// <summary>
     /// TOON 的统一选项配置，风格对齐 System.Text.Json。用于控制缩进、分隔符、严格模式、长度标记以及底层 JSON 行为。
@@ -91,8 +90,8 @@ namespace Toon
                 NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
             };
             // 写出时将 double/float 的 NaN/Infinity 规范化为 null，其余数值保持精度
-            opts.Converters.Add(new Toon.Internal.Converters.DoubleNamedFloatToNullConverter());
-            opts.Converters.Add(new Toon.Internal.Converters.SingleNamedFloatToNullConverter());
+            opts.Converters.Add(new global::Toon.Internal.Converters.DoubleNamedFloatToNullConverter());
+            opts.Converters.Add(new global::Toon.Internal.Converters.SingleNamedFloatToNullConverter());
             return opts;
         }
 

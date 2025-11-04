@@ -1,8 +1,7 @@
 #nullable enable
-using System;
 using System.Globalization;
 
-namespace Toon.Internal.Shared
+namespace AIDotNet.Toon.Internal.Shared
 {
     /// <summary>
     /// 与 TypeScript 版 shared/literal-utils.ts 对齐的字面量判定工具。

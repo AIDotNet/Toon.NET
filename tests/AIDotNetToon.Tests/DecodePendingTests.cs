@@ -1,13 +1,14 @@
 #nullable enable
 using System;
 using System.Text.Json;
+using AIDotNet.Toon;
 using Xunit;
 
 namespace Toon.Tests
 {
     /// <summary>
     /// 解码与严格模式相关的覆盖项占位测试。
-    /// 由于当前解码器 [C#.ToonDecoder.DecodeToJsonString](src/Toon.NET/ToonSerializer.cs:98) 仍为占位实现，这些测试临时跳过。
+    /// 由于当前解码器 [C#.ToonDecoder.DecodeToJsonString](src/AIDotNet.Toon/ToonSerializer.cs:98) 仍为占位实现，这些测试临时跳过。
     /// 待实现 Scanner/Parser/Validation/Decoders 后，去掉 Skip 并补充断言。
     /// </summary>
     public class DecodePendingTests

@@ -1,8 +1,7 @@
 #nullable enable
-using System;
 using System.Text.Json;
 
-namespace Toon
+namespace AIDotNet.Toon
 {
     /// <summary>
     /// 提供与 System.Text.Json 风格一致的 TOON 编解码入口，统一由 <see cref="ToonSerializerOptions"/> 控制行为。
@@ -16,7 +15,7 @@ namespace Toon
         {
             options ??= ToonSerializerOptions.Default;
             var element = JsonSerializer.SerializeToElement(value, options.JsonOptions);
-            return Internal.Encode.ToonEncoder.Encode(element, options);
+            return ToonEncoder.Encode(element, options);
         }
 
         /// <summary>将 .NET 对象（使用显式类型）编码为 TOON 文本。</summary>
@@ -27,7 +26,7 @@ namespace Toon
 
             // 使用显式类型序列化为 JsonElement，以保持精度与转换器行为
             var element = JsonSerializer.SerializeToElement(value, inputType, options.JsonOptions);
-            return Internal.Encode.ToonEncoder.Encode(element, options);
+            return ToonEncoder.Encode(element, options);
         }
 
         /// <summary>将 TOON 文本解码为 .NET 对象。</summary>
@@ -37,7 +36,7 @@ namespace Toon
             options ??= ToonSerializerOptions.Default;
 
             // 先解码为 JSON（字符串或 DOM），再交给 System.Text.Json
-            var json = Internal.Decode.ToonDecoder.DecodeToJsonString(toon, options);
+            var json = ToonDecoder.DecodeToJsonString(toon, options);
             return JsonSerializer.Deserialize<T>(json, options.JsonOptions);
         }
 
@@ -48,7 +47,7 @@ namespace Toon
             if (returnType is null) throw new ArgumentNullException(nameof(returnType));
             options ??= ToonSerializerOptions.Default;
 
-            var json = Internal.Decode.ToonDecoder.DecodeToJsonString(toon, options);
+            var json = ToonDecoder.DecodeToJsonString(toon, options);
             return JsonSerializer.Deserialize(json, returnType, options.JsonOptions);
         }
     }

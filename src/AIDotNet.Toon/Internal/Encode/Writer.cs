@@ -1,11 +1,8 @@
 #nullable enable
-using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Runtime.CompilerServices;
-using Toon.Internal;
+using System.Text;
 
-namespace Toon.Internal.Encode
+namespace AIDotNet.Toon.Internal.Encode
 {
     /// <summary>
     /// 行写入器：管理缩进与行拼接，生成最终 TOON 文本。
@@ -13,9 +10,9 @@ namespace Toon.Internal.Encode
     /// </summary>
     internal sealed class LineWriter
     {
-        private readonly List<string> _lines = new();
+        private readonly List<string> _lines = [];
         private readonly string _indentationString;
-        private readonly List<string> _indentCache = new() { string.Empty };
+        private readonly List<string> _indentCache = [string.Empty];
 
         /// <summary>
         /// 构造写入器。

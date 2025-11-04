@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Toon.NET\Toon.NET.csproj" />
+    <ProjectReference Include="..\..\src\AIDotNet.Toon\AIDotNet.Toon.csproj" />
   </ItemGroup>
 
   <ItemGroup>

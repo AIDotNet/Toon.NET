@@ -1,8 +1,7 @@
 #nullable enable
-using System;
 using System.Text;
 
-namespace Toon
+namespace AIDotNet.Toon
 {
     /// <summary>
     /// TOON 解析与验证异常。对齐 System.Text.Json 的异常体验，提供行号与列号信息，便于定位。

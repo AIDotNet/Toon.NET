@@ -6,7 +6,7 @@
         <AssemblyVersion>$(Version)</AssemblyVersion>
         <Company>AIDotNet</Company>
         <Authors>AIDotNet Contributors</Authors>
-        <RepositoryUrl>https://github.com/AIDotNet/Toon.NET</RepositoryUrl>
+        <RepositoryUrl>https://github.com/AIDotNet/AIDotNet.Toon</RepositoryUrl>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <GeneratePackageOnBuild>true</GeneratePackageOnBuild>
         <Description></Description>

@@ -1,9 +1,8 @@
+using System.Text.Json;
+using AIDotNet.Toon.Internal.Encode;
 
-namespace Toon.Internal.Encode
+namespace AIDotNet.Toon
 {
-    using System.Text.Json;
-    using Toon.Internal.Shared;
-
     /// <summary>
     /// 编码器入口：从 JsonElement 生成 TOON 文本。
     /// 该类的完整实现将对齐 TypeScript 版本的 encoders.ts/normalize.ts/primitives.ts/writer.ts。
@@ -11,7 +10,7 @@ namespace Toon.Internal.Encode
     /// </summary>
     internal static class ToonEncoder
     {
-        internal static string Encode(JsonElement element, Toon.ToonSerializerOptions options)
+        internal static string Encode(JsonElement element, ToonSerializerOptions options)
         {
             // TODO: 替换为完整实现：Normalize(JsonElement) -> Encoders -> Writer
             // 现阶段策略：输出可用的 TOON 文本以支撑端到端流程

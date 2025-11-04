@@ -1,5 +1,9 @@
+using System.Globalization;
+using System.Text;
+using AIDotNet.Toon.Internal;
+using AIDotNet.Toon.Internal.Shared;
 
-namespace Toon.Internal.Decode
+namespace AIDotNet.Toon
 {
     /// <summary>
     /// 解码器入口：从 TOON 文本生成 JSON 字符串。
@@ -8,7 +12,7 @@ namespace Toon.Internal.Decode
     /// </summary>
     internal static class ToonDecoder
     {
-        internal static string DecodeToJsonString(string toon, Toon.ToonSerializerOptions options)
+        internal static string DecodeToJsonString(string toon, ToonSerializerOptions options)
         {
             // TODO：完整实现将替换为 Scanner -> Parser/Decoders -> JSON DOM
             // 当前增强（MVP+）：
@@ -37,7 +41,7 @@ namespace Toon.Internal.Decode
                 else
                 {
                     // 行内原子数组：key[N]: v1<delim>v2...
-                    var values = new System.Collections.Generic.List<string>();
+                    var values = new List<string>();
                     if (!string.IsNullOrEmpty(hInline))
                     {
                         var toks = SplitByUnquoted(hInline, hDelim);
@@ -68,7 +72,7 @@ namespace Toon.Internal.Decode
                     if (fields is not null && fields.Count > 0)
                     {
                         // 表格数组：[#]N{fields}:
-                        var arrItems = new System.Collections.Generic.List<string>();
+                        var arrItems = new List<string>();
                         for (int i = 1; i < lines.Length; i++)
                         {
                             var raw = lines[i];
@@ -77,9 +81,9 @@ namespace Toon.Internal.Decode
                             {
                                 int k = 0;
                                 int spaceCount = 0;
-                                while (k < raw.Length && (raw[k] == Toon.Internal.Tokens.Space || raw[k] == Toon.Internal.Tokens.Tab))
+                                while (k < raw.Length && (raw[k] == Tokens.Space || raw[k] == Tokens.Tab))
                                 {
-                                    if (raw[k] == Toon.Internal.Tokens.Tab)
+                                    if (raw[k] == Tokens.Tab)
                                         throw ToonFormatException.Syntax("TAB indentation is not allowed in strict mode.");
                                     spaceCount++;
                                     k++;
@@ -99,7 +103,7 @@ namespace Toon.Internal.Decode
                             if (options.Strict && tokens.Count != fields.Count)
                                 throw ToonFormatException.Syntax("Tabular row field count mismatch.");
 
-                            var sb = new System.Text.StringBuilder();
+                            var sb = new StringBuilder();
                             sb.Append('{');
                             for (int c = 0; c < fields.Count; c++)
                             {
@@ -123,7 +127,7 @@ namespace Toon.Internal.Decode
                     else
                     {
                         // 列表数组或行内 + 列表追加
-                        var values = new System.Collections.Generic.List<string>();
+                        var values = new List<string>();
                         if (!string.IsNullOrEmpty(inline))
                         {
                             var toks = SplitByUnquoted(inline, delim);
@@ -149,9 +153,9 @@ namespace Toon.Internal.Decode
                             {
                                 int k = 0;
                                 int spaceCount = 0;
-                                while (k < raw.Length && (raw[k] == Toon.Internal.Tokens.Space || raw[k] == Toon.Internal.Tokens.Tab))
+                                while (k < raw.Length && (raw[k] == Tokens.Space || raw[k] == Tokens.Tab))
                                 {
-                                    if (raw[k] == Toon.Internal.Tokens.Tab)
+                                    if (raw[k] == Tokens.Tab)
                                         throw ToonFormatException.Syntax("TAB indentation is not allowed in strict mode.");
                                     spaceCount++;
                                     k++;
@@ -160,7 +164,7 @@ namespace Toon.Internal.Decode
                                     throw ToonFormatException.Syntax("Indentation must be multiples of indent size in strict mode.");
                             }
 
-                            if (s.Length >= 2 && s[0] == Toon.Internal.Tokens.ListItemMarker && s[1] == Toon.Internal.Tokens.Space)
+                            if (s.Length >= 2 && s[0] == Tokens.ListItemMarker && s[1] == Tokens.Space)
                             {
                                 var itemText = s.Substring(2).Trim();
                                 if (itemText.Length == 0) { values.Add("null"); continue; }
@@ -178,7 +182,7 @@ namespace Toon.Internal.Decode
 
                 // 无 header：尝试多行平铺对象（每行 "key: value"）
                 {
-                    var pairs = new System.Collections.Generic.List<string>();
+                    var pairs = new List<string>();
                     bool seenAnyKv = false;
 
                     foreach (var line in lines)
@@ -190,7 +194,7 @@ namespace Toon.Internal.Decode
                             continue;
                         }
 
-                        var idx = Toon.Internal.Shared.StringUtils.FindUnquotedChar(trimmed, Toon.Internal.Tokens.Colon, 0);
+                        var idx = StringUtils.FindUnquotedChar(trimmed, Tokens.Colon, 0);
                         if (idx <= 0) { seenAnyKv = false; break; }
                         seenAnyKv = true;
 
@@ -210,34 +214,34 @@ namespace Toon.Internal.Decode
                 }
 
                 // 多行但不符合已知结构：以整体字符串回退
-                var escapedMl = Toon.Internal.Shared.StringUtils.EscapeString(t);
+                var escapedMl = StringUtils.EscapeString(t);
                 return $"\"{escapedMl}\"";
             }
 
             // 单行（非 header）：字符串字面量 / 原子 / 单行对象 / 字符串回退
 
             // 1) 完整带引号字符串字面量（确保首尾成对且考虑转义）
-            if (t.Length >= 2 && t[0] == Toon.Internal.Tokens.DoubleQuote)
+            if (t.Length >= 2 && t[0] == Tokens.DoubleQuote)
             {
-                var closing = Toon.Internal.Shared.StringUtils.FindClosingQuote(t, 0);
+                var closing = StringUtils.FindClosingQuote(t, 0);
                 if (closing == t.Length - 1)
                 {
                     var inner = t.Substring(1, t.Length - 2);
-                    var unescaped = Toon.Internal.Shared.StringUtils.UnescapeString(inner);
-                    var escapedForJson = Toon.Internal.Shared.StringUtils.EscapeString(unescaped);
+                    var unescaped = StringUtils.UnescapeString(inner);
+                    var escapedForJson = StringUtils.EscapeString(unescaped);
                     return $"\"{escapedForJson}\"";
                 }
             }
 
             // 2) 原子：null/true/false/number（与编码端保持一致）
-            if (Toon.Internal.Shared.LiteralUtils.IsBooleanOrNullLiteral(t))
+            if (LiteralUtils.IsBooleanOrNullLiteral(t))
                 return t;
-            if (Toon.Internal.Shared.LiteralUtils.IsNumericLiteral(t))
+            if (LiteralUtils.IsNumericLiteral(t))
                 return t;
 
             // 3) 单行对象：key: value
             {
-                var colon = Toon.Internal.Shared.StringUtils.FindUnquotedChar(t, Toon.Internal.Tokens.Colon, 0);
+                var colon = StringUtils.FindUnquotedChar(t, Tokens.Colon, 0);
                 if (colon > 0)
                 {
                     var left = t.Substring(0, colon).Trim();
@@ -251,26 +255,26 @@ namespace Toon.Internal.Decode
             }
 
             // 4) 其他：按字符串回退（加入引号并规范转义）
-            var escapedFallback = Toon.Internal.Shared.StringUtils.EscapeString(t);
+            var escapedFallback = StringUtils.EscapeString(t);
             return $"\"{escapedFallback}\"";
 
             // ========== 本地辅助函数 ==========
             static string QuoteJson(string plain)
             {
-                var escaped = Toon.Internal.Shared.StringUtils.EscapeString(plain ?? string.Empty);
+                var escaped = StringUtils.EscapeString(plain ?? string.Empty);
                 return $"\"{escaped}\"";
             }
 
             static string DecodeKeyPlain(string keyToken)
             {
                 var k = keyToken.Trim();
-                if (k.Length >= 2 && k[0] == Toon.Internal.Tokens.DoubleQuote)
+                if (k.Length >= 2 && k[0] == Tokens.DoubleQuote)
                 {
-                    var end = Toon.Internal.Shared.StringUtils.FindClosingQuote(k, 0);
+                    var end = StringUtils.FindClosingQuote(k, 0);
                     if (end == k.Length - 1)
                     {
                         var inner = k.Substring(1, k.Length - 2);
-                        return Toon.Internal.Shared.StringUtils.UnescapeString(inner);
+                        return StringUtils.UnescapeString(inner);
                     }
                 }
                 return k;
@@ -279,17 +283,17 @@ namespace Toon.Internal.Decode
             static string DecodeValueToken(string token)
             {
                 var v = token.Trim();
-                if (v.Length >= 2 && v[0] == Toon.Internal.Tokens.DoubleQuote)
+                if (v.Length >= 2 && v[0] == Tokens.DoubleQuote)
                 {
-                    var end = Toon.Internal.Shared.StringUtils.FindClosingQuote(v, 0);
+                    var end = StringUtils.FindClosingQuote(v, 0);
                     if (end == v.Length - 1)
                     {
                         var inner = v.Substring(1, v.Length - 2);
-                        var unescaped = Toon.Internal.Shared.StringUtils.UnescapeString(inner);
+                        var unescaped = StringUtils.UnescapeString(inner);
                         return QuoteJson(unescaped);
                     }
                 }
-                if (Toon.Internal.Shared.LiteralUtils.IsBooleanOrNullLiteral(v) || Toon.Internal.Shared.LiteralUtils.IsNumericLiteral(v))
+                if (LiteralUtils.IsBooleanOrNullLiteral(v) || LiteralUtils.IsNumericLiteral(v))
                     return v;
 
                 // 非字面 token 作为字符串处理
@@ -301,12 +305,12 @@ namespace Toon.Internal.Decode
                 out string? keyPlain,
                 out int length,
                 out char delimiter,
-                out System.Collections.Generic.List<string>? fields,
+                out List<string>? fields,
                 out string inlineValues)
             {
                 keyPlain = null;
                 length = 0;
-                delimiter = Toon.Internal.Tokens.DefaultDelimiterChar;
+                delimiter = Tokens.DefaultDelimiterChar;
                 fields = null;
                 inlineValues = string.Empty;
 
@@ -314,9 +318,9 @@ namespace Toon.Internal.Decode
                 if (s.Length == 0) return false;
 
                 // 定位 '[' 与 ']'
-                int lb = s.IndexOf(Toon.Internal.Tokens.OpenBracket);
+                int lb = s.IndexOf(Tokens.OpenBracket);
                 if (lb < 0) return false;
-                int rb = s.IndexOf(Toon.Internal.Tokens.CloseBracket, lb + 1);
+                int rb = s.IndexOf(Tokens.CloseBracket, lb + 1);
                 if (rb < 0) return false;
 
                 // 前缀键
@@ -328,7 +332,7 @@ namespace Toon.Internal.Decode
 
                 // 解析方括号内部：[#]N[delimiter?]
                 var inside = s.Substring(lb + 1, rb - lb - 1);
-                bool hasHash = inside.Length > 0 && inside[0] == Toon.Internal.Tokens.Hash;
+                bool hasHash = inside.Length > 0 && inside[0] == Tokens.Hash;
                 int idx = hasHash ? 1 : 0;
 
                 // 读取长度数字
@@ -336,7 +340,7 @@ namespace Toon.Internal.Decode
                 while (i < inside.Length && inside[i] >= '0' && inside[i] <= '9') i++;
                 if (i == idx) return false; // 必须有数字
                 var numText = inside.Substring(idx, i - idx);
-                if (!int.TryParse(numText, System.Globalization.NumberStyles.None, System.Globalization.CultureInfo.InvariantCulture, out length))
+                if (!int.TryParse(numText, NumberStyles.None, CultureInfo.InvariantCulture, out length))
                     return false;
 
                 // 可选 bracket 内分隔符
@@ -346,26 +350,26 @@ namespace Toon.Internal.Decode
                 }
                 else
                 {
-                    delimiter = Toon.Internal.Tokens.DefaultDelimiterChar;
+                    delimiter = Tokens.DefaultDelimiterChar;
                 }
 
                 // 可选字段集 {a,b,...}
-                int braceStart = s.IndexOf(Toon.Internal.Tokens.OpenBrace, rb + 1);
-                int braceEnd = braceStart >= 0 ? s.IndexOf(Toon.Internal.Tokens.CloseBrace, braceStart + 1) : -1;
+                int braceStart = s.IndexOf(Tokens.OpenBrace, rb + 1);
+                int braceEnd = braceStart >= 0 ? s.IndexOf(Tokens.CloseBrace, braceStart + 1) : -1;
 
-                int colon = Toon.Internal.Shared.StringUtils.FindUnquotedChar(s, Toon.Internal.Tokens.Colon, rb + 1);
+                int colon = StringUtils.FindUnquotedChar(s, Tokens.Colon, rb + 1);
                 if (colon < 0) return false;
 
                 if (braceStart >= 0 && braceEnd > braceStart && braceEnd < colon)
                 {
                     var inner = s.Substring(braceStart + 1, braceEnd - braceStart - 1);
                     var rawFields = SplitByUnquoted(inner, delimiter);
-                    if (rawFields.Count <= 1 && delimiter != Toon.Internal.Tokens.DefaultDelimiterChar && inner.IndexOf(Toon.Internal.Tokens.Comma) >= 0)
+                    if (rawFields.Count <= 1 && delimiter != Tokens.DefaultDelimiterChar && inner.IndexOf(Tokens.Comma) >= 0)
                     {
                         // 兼容：方括号使用非默认分隔符（如 '|'）但字段集仍用逗号分隔的写法
-                        rawFields = SplitByUnquoted(inner, Toon.Internal.Tokens.DefaultDelimiterChar);
+                        rawFields = SplitByUnquoted(inner, Tokens.DefaultDelimiterChar);
                     }
-                    var list = new System.Collections.Generic.List<string>();
+                    var list = new List<string>();
                     foreach (var rf in rawFields)
                     {
                         var f = rf.Trim();
@@ -380,9 +384,9 @@ namespace Toon.Internal.Decode
                 return true;
             }
 
-            static System.Collections.Generic.List<string> SplitByUnquoted(string content, char delim)
+            static List<string> SplitByUnquoted(string content, char delim)
             {
-                var list = new System.Collections.Generic.List<string>();
+                var list = new List<string>();
                 if (string.IsNullOrEmpty(content))
                 {
                     return list;
@@ -394,13 +398,13 @@ namespace Toon.Internal.Decode
                 while (i < content.Length)
                 {
                     var ch = content[i];
-                    if (inQuotes && ch == Toon.Internal.Tokens.Backslash && i + 1 < content.Length)
+                    if (inQuotes && ch == Tokens.Backslash && i + 1 < content.Length)
                     {
                         i += 2; // 跳过转义
                         continue;
                     }
 
-                    if (ch == Toon.Internal.Tokens.DoubleQuote)
+                    if (ch == Tokens.DoubleQuote)
                     {
                         inQuotes = !inQuotes;
                         i++;

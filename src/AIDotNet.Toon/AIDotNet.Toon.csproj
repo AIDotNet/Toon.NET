@@ -8,8 +8,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
 
     <!-- NuGet 元数据 -->
-    <PackageId>Toon.NET</PackageId>
-    <Title>Toon.NET</Title>
+    <PackageId>AIDotNet.Toon</PackageId>
+    <Title>AIDotNet.Toon</Title>
     <Description>Token-Oriented Object Notation (TOON) - a token-efficient JSON alternative for LLM prompts, .NET implementation with System.Text.Json-style API.</Description>
     <PackageProjectUrl>https://token-ai.cn</PackageProjectUrl>
     <RepositoryUrl>https://github.com/AIDotNet/Toon.NET</RepositoryUrl>
@@ -25,6 +25,7 @@
     <PublishRepositoryUrl>true</PublishRepositoryUrl>
     <EmbedUntrackedSources>true</EmbedUntrackedSources>
     <Deterministic>true</Deterministic>
+    <RootNamespace>AIDotNet.Toon</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

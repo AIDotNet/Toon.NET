@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{B99FB50C-EBE1-41F5-8540-27045CF47C7C}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Toon.NET", "src\Toon.NET\Toon.NET.csproj", "{1E361722-5F25-4CEE-9882-434230F8FA56}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIDotNet.Toon", "src\AIDotNet.Toon\AIDotNet.Toon.csproj", "{1E361722-5F25-4CEE-9882-434230F8FA56}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{147B70DD-7BE9-4743-AE2C-4E9F76F17B94}"
 	ProjectSection(SolutionItems) = preProject
@@ -11,7 +11,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{0AB3BF05-4346-4AA6-1389-037BE0695223}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Toon.NET.Tests", "tests\Toon.NET.Tests\Toon.NET.Tests.csproj", "{93E89F94-EF58-43C6-AD57-8BFFC879B99A}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AIDotNetToon.Tests", "tests\AIDotNetToon.Tests\AIDotNetToon.Tests.csproj", "{93E89F94-EF58-43C6-AD57-8BFFC879B99A}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

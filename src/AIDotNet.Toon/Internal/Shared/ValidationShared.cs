@@ -1,8 +1,7 @@
 #nullable enable
-using System;
 using System.Text.RegularExpressions;
 
-namespace Toon.Internal.Shared
+namespace AIDotNet.Toon.Internal.Shared
 {
     /// <summary>
     /// 与 TypeScript 版 shared/validation.ts 对齐的校验工具：

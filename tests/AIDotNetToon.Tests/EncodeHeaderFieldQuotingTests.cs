@@ -1,6 +1,7 @@
 #nullable enable
 using System.Collections.Generic;
 using System.Text.Json;
+using AIDotNet.Toon;
 using Xunit;
 
 namespace Toon.Tests

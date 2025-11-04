@@ -1,13 +1,8 @@
 #nullable enable
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text.Json;
 using System.Runtime.CompilerServices;
-using Toon.Internal;
-using Toon.Internal.Shared;
+using System.Text.Json;
 
-namespace Toon.Internal.Encode
+namespace AIDotNet.Toon.Internal.Encode
 {
     /// <summary>
     /// 与 TypeScript 版 encode/encoders.ts 对齐的编码器实现。

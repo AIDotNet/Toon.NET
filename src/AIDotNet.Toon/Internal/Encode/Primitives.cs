@@ -1,14 +1,10 @@
 #nullable enable
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Runtime.CompilerServices;
+using System.Text;
 using System.Text.Json;
-using Toon.Internal;
-using Toon.Internal.Shared;
+using AIDotNet.Toon.Internal.Shared;
 
-namespace Toon.Internal.Encode
+namespace AIDotNet.Toon.Internal.Encode
 {
     /// <summary>
     /// 与 TypeScript 版 encode/primitives.ts 等价的原语编码工具：

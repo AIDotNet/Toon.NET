@@ -1,7 +1,5 @@
 #nullable enable
-using System;
-
-namespace Toon.Internal
+namespace AIDotNet.Toon.Internal
 {
     /// <summary>
     /// TOON 的常量与字符映射，参考 TypeScript 版 constants.ts。
