@@ -61,7 +61,7 @@ jobs:
       run: dotnet test --configuration Release --no-build --verbosity normal
       
     - name: Pack
-      run: dotnet pack --configuration Release --no-build --output ./artifacts -p:PackageVersion=${{ github.event.inputs.version }}
+      run: dotnet pack --configuration Release --no-build --output ./artifacts
       
     - name: Publish to NuGet
       run: dotnet nuget push ./artifacts/*.nupkg --api-key ${{ secrets.NUGET }} --source https://api.nuget.org/v3/index.json --skip-duplicate 
