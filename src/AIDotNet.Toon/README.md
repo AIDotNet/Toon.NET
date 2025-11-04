@@ -97,10 +97,16 @@ var n = ToonSerializer.Deserialize<double>("3.1415", options);  // 3.1415
 ## API 与选项
 
 公共 API：
-- 泛型序列化：[C#.ToonSerializer.Serialize()](src/AIDotNet.Toon/ToonSerializer.cs:15)
-- 显式类型序列化：[C#.ToonSerializer.Serialize()](src/AIDotNet.Toon/ToonSerializer.cs:23)
-- 泛型反序列化：[C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:34)
-- 显式类型反序列化：[C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:45)
+- 泛型序列化：[C#.ToonSerializer.Serialize()](src/AIDotNet.Toon/ToonSerializer.cs:20)
+- 显式类型序列化：[C#.ToonSerializer.Serialize()](src/AIDotNet.Toon/ToonSerializer.cs:28)
+- 泛型反序列化：[C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:39)
+- 显式类型反序列化：[C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:50)
+- 字节 API：
+  - 编码为 UTF-8：[C#.ToonSerializer.SerializeToUtf8Bytes()](src/AIDotNet.Toon/ToonSerializer.cs:63) · [C#.ToonSerializer.SerializeToUtf8Bytes()](src/AIDotNet.Toon/ToonSerializer.cs:70)
+  - 从 UTF-8 解码：[C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:77) · [C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:81) · [C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:88) · [C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:92)
+- 流 API：
+  - 写入流：[C#.ToonSerializer.Serialize()](src/AIDotNet.Toon/ToonSerializer.cs:101) · [C#.ToonSerializer.Serialize()](src/AIDotNet.Toon/ToonSerializer.cs:110)
+  - 从流解码：[C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:119) · [C#.ToonSerializer.Deserialize()](src/AIDotNet.Toon/ToonSerializer.cs:127)
 
 选项模型：[C#.ToonSerializerOptions](src/AIDotNet.Toon/ToonSerializerOptions.cs:28)
 - Indent：每级缩进空格数，默认 2
@@ -170,6 +176,20 @@ ToonSerializer.Serialize(rows);
 // [2]{id,name}:
 //   1,alice
 //   2,bob
+```
+
+字节与流：
+
+```csharp
+// 字节
+var bytes = ToonSerializer.SerializeToUtf8Bytes(rows);
+var rowsFromBytes = ToonSerializer.Deserialize<List<Dictionary<string, object>>>(bytes);
+
+// 流
+using var ms = new MemoryStream();
+ToonSerializer.Serialize(rows, ms);   // 写入 UTF-8（无 BOM），保持流打开
+ms.Position = 0;
+var rowsFromStream = ToonSerializer.Deserialize<List<Dictionary<string, object>>>(ms);
 ```
 
 特殊数值处理：
