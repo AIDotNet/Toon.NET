@@ -189,7 +189,7 @@ var rowsFromBytes = ToonSerializer.Deserialize<List<Dictionary<string, object>>>
 
 // Stream
 using var ms = new MemoryStream();
-ToonSerializer.Serialize(rows, ms);   // Write UTF-8 (no BOM), keep stream open
+ToonSerializer.Serialize(rows, ms);   // Write to stream as UTF-8 (no BOM), keeping stream open
 ms.Position = 0;
 var rowsFromStream = ToonSerializer.Deserialize<List<Dictionary<string, object>>>(ms);
 ```
@@ -223,7 +223,7 @@ Publishing recommendations: Use Release build; consider R2R/ReadyToRun to improv
   - Specification and reference implementation: https://github.com/toon-format/toon
 - .NET version module mapping:
   - Encoder: [C#.ToonEncoder.Encode()](src/AIDotNet.Toon/ToonEncoder.cs:13) -> [C#.Encoders.EncodeValue()](src/AIDotNet.Toon/Internal/Encode/Encoders.cs:20)
-  - Decoder: [C#.ToonDecoder.DecodeToJsonString()](src/AIDotNet.Toon/ToonDecoder.cs:15) (placeholder, gradually improving)
+  - Decoder: [C#.ToonDecoder.DecodeToJsonString()](src/AIDotNet.Toon/ToonDecoder.cs:15) (placeholder, work in progress)
 
 
 ## Version Support
@@ -237,7 +237,7 @@ Publishing recommendations: Use Release build; consider R2R/ReadyToRun to improv
 
 - Decoding: Scanner / Parser / Validation / Decoders
 - Strict mode error model: Provide row/column and context-aware [C#.ToonFormatException](src/AIDotNet.Toon/ToonFormatException.cs:10)
-- Normalization strategy (Normalize): Cross-language consistency for dates/collections, etc.
+- Normalization strategy: Cross-language consistency for dates/collections, etc.
 - Documentation and example improvements, publish NuGet package
 
 
