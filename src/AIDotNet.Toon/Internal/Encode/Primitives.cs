@@ -1,183 +1,147 @@
 #nullable enable
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Text.Json;
+using System.Text.Json.Nodes;
 using AIDotNet.Toon.Internal.Shared;
 
 namespace AIDotNet.Toon.Internal.Encode
 {
     /// <summary>
-    /// 与 TypeScript 版 encode/primitives.ts 等价的原语编码工具：
-    /// - EncodePrimitive：原子值编码（string/number/bool/null）
-    /// - EncodeStringLiteral：按规则决定是否加引号与转义
-    /// - EncodeKey：键名编码（可不加引号的规则与 TS 相同）
-    /// - EncodeAndJoinPrimitives：将原子值序列化并按分隔符连接
-    /// - FormatHeader：数组头部渲染 [N] 或 [#N]，可附加字段集 {a,b}
+    /// Primitive value encoding, key encoding, and header formatting utilities.
+    /// Aligned with TypeScript encode/primitives.ts
     /// </summary>
     internal static class Primitives
     {
+        // #region Primitive encoding
+
         /// <summary>
-        /// 原子值编码：
-        /// - null -> "null"
-        /// - bool -> "true"/"false"
-        /// - number -> 按规则：NaN/Infinity/-Infinity -> "null"；-0 规范化为 "0"；其余保留 GetRawText 精度
-        /// - string -> EncodeStringLiteral()
-        /// 其他 JsonValueKind（对象/数组）不应进入此处，若进入则回退 "null"（与 TS 规范保持一致性由上层保证）。
+        /// Encodes a primitive JSON value (null, boolean, number, or string) to its TOON representation.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static string EncodePrimitive(JsonElement value, ToonSerializerOptions options)
+        public static string EncodePrimitive(JsonNode? value, char delimiter = Constants.COMMA)
         {
-            return value.ValueKind switch
+            if (value == null)
+                return Constants.NULL_LITERAL;
+
+            if (value is JsonValue jsonValue)
             {
-                JsonValueKind.Null => Tokens.NullLiteral,
-                JsonValueKind.True => Tokens.TrueLiteral,
-                JsonValueKind.False => Tokens.FalseLiteral,
-                JsonValueKind.Number => EncodeNumber(value),
-                JsonValueKind.String => EncodeStringLiteral(value.GetString() ?? string.Empty, options),
-                _ => Tokens.NullLiteral,
-            };
+                // Boolean
+                if (jsonValue.TryGetValue<bool>(out var boolVal))
+                    return boolVal ? Constants.TRUE_LITERAL : Constants.FALSE_LITERAL;
 
-            static string EncodeNumber(JsonElement numberElement)
-            {
-                // 原文快速判断命名浮点常量
-                var raw = numberElement.GetRawText();
-                if (raw == "NaN" || raw == "Infinity" || raw == "-Infinity")
-                    return Tokens.NullLiteral;
+                // Number
+                if (jsonValue.TryGetValue<int>(out var intVal))
+                    return intVal.ToString();
 
-                // 仅在可能为负零时进行快速文本判断，避免解析为 double 带来的额外开销
-                if (raw.Length > 0 && raw[0] == '-' && IsNegativeZeroText(raw))
-                    return "0";
+                if (jsonValue.TryGetValue<long>(out var longVal))
+                    return longVal.ToString();
 
-                return raw;
+                if (jsonValue.TryGetValue<double>(out var doubleVal))
+                    return doubleVal.ToString("G17"); // Full precision
 
-                static bool IsNegativeZeroText(string text)
-                {
-                    // 假定 text[0] == '-'
-                    int i = 1;
-                    bool hasDigit = false;
-                    for (; i < text.Length; i++)
-                    {
-                        char c = text[i];
-                        if (c >= '0' && c <= '9')
-                        {
-                            if (c != '0') return false; // 任意非零数字则不是 -0
-                            hasDigit = true;
-                        }
-                        else if (c == '.' || c == 'e' || c == 'E' || c == '+' || c == '-')
-                        {
-                            continue; // 允许小数点与科学计数法标记
-                        }
-                        else
-                        {
-                            return false; // 其他字符不接受
-                        }
-                    }
-                    return hasDigit;
-                }
+                if (jsonValue.TryGetValue<decimal>(out var decimalVal))
+                    return decimalVal.ToString();
+
+                // String
+                if (jsonValue.TryGetValue<string>(out var strVal))
+                    return EncodeStringLiteral(strVal ?? string.Empty, delimiter);
             }
+
+            return Constants.NULL_LITERAL;
         }
 
         /// <summary>
-        /// 字符串字面量编码。若满足 isSafeUnquoted 则直接输出；否则加双引号并转义。
+        /// Encodes a string literal, adding quotes if necessary.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static string EncodeStringLiteral(string value, ToonSerializerOptions options)
+        public static string EncodeStringLiteral(string value, char delimiter = Constants.COMMA)
         {
-            var delimiter = options.GetDelimiterChar();
-            if (ValidationShared.IsSafeUnquoted(value, delimiter))
+            var delimiterEnum = Constants.FromDelimiterChar(delimiter);
+            
+            if (ValidationShared.IsSafeUnquoted(value, delimiterEnum))
+            {
                 return value;
+            }
 
-            return StringUtils.Quote(value);
+            var escaped = StringUtils.EscapeString(value);
+            return $"{Constants.DOUBLE_QUOTE}{escaped}{Constants.DOUBLE_QUOTE}";
         }
 
+        // #endregion
+
+        // #region Key encoding
+
         /// <summary>
-        /// 键名编码。若满足 isValidUnquotedKey 则直接输出；否则加双引号并转义。
+        /// Encodes a key, adding quotes if necessary.
         /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static string EncodeKey(string key)
+        public static string EncodeKey(string key)
         {
             if (ValidationShared.IsValidUnquotedKey(key))
-                return key;
-
-            return StringUtils.Quote(key);
-        }
-
-        /// <summary>
-        /// 编码并按分隔符连接一组 JsonElement 原子值。
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static string EncodeAndJoinPrimitives(IEnumerable<JsonElement> values, ToonSerializerOptions options)
-        {
-            var delimiter = options.GetDelimiterChar();
-            var sb = new StringBuilder();
-            bool first = true;
-            foreach (var v in values)
             {
-                var token = EncodePrimitive(v, options);
-                if (!first) sb.Append(delimiter);
-                sb.Append(token);
-                first = false;
+                return key;
             }
-            return sb.ToString();
+
+            var escaped = StringUtils.EscapeString(key);
+            return $"{Constants.DOUBLE_QUOTE}{escaped}{Constants.DOUBLE_QUOTE}";
         }
 
-        /// <summary>
-        /// 按指定分隔符连接一组已编码的字符串片段（辅助）。
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        internal static string JoinEncoded(IEnumerable<string> encodedTokens, char delimiter)
-            => string.Join(delimiter, encodedTokens);
+        // #endregion
+
+        // #region Value joining
 
         /// <summary>
-        /// 构造数组头部：
-        /// - 可选 key 前缀（已按 EncodeKey 规则编码）
-        /// - 方括号内 [#N] 或 [N]；仅当分隔符不是逗号时在方括号末尾附加分隔符字符
-        /// - 可选字段集：{col1,col2,...}，字段名按 EncodeKey 规则编码并用当前分隔符连接
-        /// - 最终结尾加冒号
+        /// Encodes and joins an array of primitive values with the specified delimiter.
         /// </summary>
-        internal static string FormatHeader(
+        public static string EncodeAndJoinPrimitives(IEnumerable<JsonNode?> values, char delimiter = Constants.COMMA)
+        {
+            var encoded = values.Select(v => EncodePrimitive(v, delimiter));
+            return string.Join(delimiter.ToString(), encoded);
+        }
+
+        // #endregion
+
+        // #region Header formatters
+
+        /// <summary>
+        /// Formats an array header with optional key, length marker, delimiter, and field names.
+        /// Examples:
+        /// - "[3]:" for unnamed array of 3 items
+        /// - "items[5]:" for named array
+        /// - "users[#2]{name,age}:" for tabular format with length marker
+        /// </summary>
+        public static string FormatHeader(
             int length,
-            ToonSerializerOptions options,
             string? key = null,
             IReadOnlyList<string>? fields = null,
-            char? delimiterOverride = null,
-            char? lengthMarkerOverride = null)
+            char? delimiter = null,
+            bool lengthMarker = false)
         {
-            var delimiter = delimiterOverride ?? options.GetDelimiterChar();
-            var includeDelimiterInBracket = delimiter != Tokens.DefaultDelimiterChar;
+            var delimiterChar = delimiter ?? Constants.DEFAULT_DELIMITER_CHAR;
+            var header = string.Empty;
 
-            var hasLengthMarker =
-                (lengthMarkerOverride.HasValue && lengthMarkerOverride.Value == Tokens.Hash)
-                || (options.LengthMarker.HasValue && options.LengthMarker.Value == Tokens.Hash);
-
-            var sb = new StringBuilder();
-
+            // Add key if present
             if (!string.IsNullOrEmpty(key))
             {
-                sb.Append(EncodeKey(key!));
+                header += EncodeKey(key);
             }
 
-            sb.Append(Tokens.OpenBracket);
-            if (hasLengthMarker)
-                sb.Append(Tokens.Hash);
-            sb.Append(length);
-            if (includeDelimiterInBracket)
-                sb.Append(delimiter);
-            sb.Append(Tokens.CloseBracket);
+            // Add array length with optional marker and delimiter
+            var marker = lengthMarker ? Constants.HASH.ToString() : string.Empty;
+            var delimiterSuffix = delimiterChar != Constants.DEFAULT_DELIMITER_CHAR
+                ? delimiterChar.ToString()
+                : string.Empty;
 
-            if (fields is { Count: > 0 })
+            header += $"{Constants.OPEN_BRACKET}{marker}{length}{delimiterSuffix}{Constants.CLOSE_BRACKET}";
+
+            // Add field names for tabular format
+            if (fields != null && fields.Count > 0)
             {
-                sb.Append(Tokens.OpenBrace);
-                for (int i = 0; i < fields.Count; i++)
-                {
-                    if (i > 0) sb.Append(delimiter);
-                    sb.Append(EncodeKey(fields[i]));
-                }
-                sb.Append(Tokens.CloseBrace);
+                var quotedFields = fields.Select(EncodeKey);
+                var fieldsStr = string.Join(delimiterChar.ToString(), quotedFields);
+                header += $"{Constants.OPEN_BRACE}{fieldsStr}{Constants.CLOSE_BRACE}";
             }
 
-            sb.Append(Tokens.Colon);
-            return sb.ToString();
+            header += Constants.COLON;
+
+            return header;
         }
+
+        // #endregion
     }
 }

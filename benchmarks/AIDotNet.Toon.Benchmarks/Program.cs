@@ -32,7 +32,7 @@ internal static class Program
         ["toon"] = data => ToonSerializer.Serialize(data, new ToonSerializerOptions
         {
             Indent = 2,
-            Delimiter = ToonDelimiter.Comma,
+            Delimiter = ToonDelimiter.COMMA,
             Strict = true,
             LengthMarker = null
         })

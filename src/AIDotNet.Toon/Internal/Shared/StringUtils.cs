@@ -4,33 +4,33 @@ using System.Text;
 namespace AIDotNet.Toon.Internal.Shared
 {
     /// <summary>
-    /// 与 TypeScript 版 shared/string-utils.ts 对齐的字符串工具：
-    /// - EscapeString：编码时对特殊字符转义
-    /// - UnescapeString：解码时还原转义序列
-    /// - FindClosingQuote：查找考虑转义的配对引号位置
-    /// - FindUnquotedChar：查找不在引号内出现的目标字符
+    /// String utilities, aligned with TypeScript version shared/string-utils.ts:
+    /// - EscapeString: Escapes special characters during encoding
+    /// - UnescapeString: Restores escape sequences during decoding
+    /// - FindClosingQuote: Finds the position of the matching closing quote, considering escapes
+    /// - FindUnquotedChar: Finds the position of the target character not inside quotes
     /// </summary>
     internal static class StringUtils
     {
         /// <summary>
-        /// 转义特殊字符：反斜杠、引号、换行、回车、制表符。
-        /// 等价于 TS escapeString。
+        /// Escapes special characters: backslash, quotes, newlines, carriage returns, tabs.
+        /// Equivalent to TS escapeString.
         /// </summary>
         internal static string EscapeString(string value)
         {
             if (string.IsNullOrEmpty(value)) return value ?? string.Empty;
 
             return value
-                .Replace("\\", "\\\\")
-                .Replace("\"", "\\\"")
-                .Replace("\n", "\\n")
-                .Replace("\r", "\\r")
-                .Replace("\t", "\\t");
+                .Replace("\\", $"{Constants.BACKSLASH}{Constants.BACKSLASH}")
+                .Replace("\"", $"{Constants.BACKSLASH}{Constants.DOUBLE_QUOTE}")
+                .Replace("\n", $"{Constants.BACKSLASH}n")
+                .Replace("\r", $"{Constants.BACKSLASH}r")
+                .Replace("\t", $"{Constants.BACKSLASH}t");
         }
 
         /// <summary>
-        /// 反转义字符串，支持 \n、\t、\r、\\、\"。非法序列会抛出 <see cref="ToonFormatException"/>。
-        /// 等价于 TS unescapeString。
+        /// Unescapes the string, supporting \n, \t, \r, \\, \". Invalid sequences throw <see cref="ToonFormatException"/>.
+        /// Equivalent to TS unescapeString.
         /// </summary>
         internal static string UnescapeString(string value)
         {
@@ -41,7 +41,7 @@ namespace AIDotNet.Toon.Internal.Shared
             while (i < value.Length)
             {
                 var ch = value[i];
-                if (ch == Tokens.Backslash)
+                if (ch == Constants.BACKSLASH)
                 {
                     if (i + 1 >= value.Length)
                         throw ToonFormatException.Syntax("Invalid escape sequence: backslash at end of string");
@@ -50,23 +50,23 @@ namespace AIDotNet.Toon.Internal.Shared
                     switch (next)
                     {
                         case 'n':
-                            sb.Append(Tokens.Newline);
+                            sb.Append(Constants.NEWLINE);
                             i += 2;
                             continue;
                         case 't':
-                            sb.Append(Tokens.Tab);
+                            sb.Append(Constants.TAB);
                             i += 2;
                             continue;
                         case 'r':
-                            sb.Append(Tokens.CarriageReturn);
+                            sb.Append(Constants.CARRIAGE_RETURN);
                             i += 2;
                             continue;
                         case '\\':
-                            sb.Append(Tokens.Backslash);
+                            sb.Append(Constants.BACKSLASH);
                             i += 2;
                             continue;
                         case '"':
-                            sb.Append(Tokens.DoubleQuote);
+                            sb.Append(Constants.DOUBLE_QUOTE);
                             i += 2;
                             continue;
                         default:
@@ -82,22 +82,22 @@ namespace AIDotNet.Toon.Internal.Shared
         }
 
         /// <summary>
-        /// 查找从 start 起始的字符串中，考虑转义的下一个双引号位置。
-        /// 若未找到返回 -1。等价于 TS findClosingQuote。
+        /// Finds the position of the next double quote in the string starting from 'start', considering escapes.
+        /// Returns -1 if not found. Equivalent to TS findClosingQuote.
         /// </summary>
         internal static int FindClosingQuote(string content, int start)
         {
             int i = start + 1;
             while (i < content.Length)
             {
-                // 在引号内部遇到转义，跳过下一个字符
-                if (content[i] == Tokens.Backslash && i + 1 < content.Length)
+                // Skip the next character when encountering an escape inside quotes
+                if (content[i] == Constants.BACKSLASH && i + 1 < content.Length)
                 {
                     i += 2;
                     continue;
                 }
 
-                if (content[i] == Tokens.DoubleQuote)
+                if (content[i] == Constants.DOUBLE_QUOTE)
                     return i;
 
                 i++;
@@ -106,8 +106,8 @@ namespace AIDotNet.Toon.Internal.Shared
         }
 
         /// <summary>
-        /// 查找不在引号内出现的目标字符位置；未找到返回 -1。
-        /// 在引号内的转义序列会被跳过。等价于 TS findUnquotedChar。
+        /// Finds the position of the target character not inside quotes; returns -1 if not found.
+        /// Escape sequences inside quotes are skipped. Equivalent to TS findUnquotedChar.
         /// </summary>
         internal static int FindUnquotedChar(string content, char target, int start = 0)
         {
@@ -116,14 +116,14 @@ namespace AIDotNet.Toon.Internal.Shared
 
             while (i < content.Length)
             {
-                if (inQuotes && content[i] == Tokens.Backslash && i + 1 < content.Length)
+                if (inQuotes && content[i] == Constants.BACKSLASH && i + 1 < content.Length)
                 {
-                    // 引号内的转义，跳过下一个字符
+                    // Skip the next character for escape sequences inside quotes
                     i += 2;
                     continue;
                 }
 
-                if (content[i] == Tokens.DoubleQuote)
+                if (content[i] == Constants.DOUBLE_QUOTE)
                 {
                     inQuotes = !inQuotes;
                     i++;
@@ -140,8 +140,8 @@ namespace AIDotNet.Toon.Internal.Shared
         }
 
         /// <summary>
-        /// 生成带引号的字符串字面量，如果需要则转义内部字符。
-        /// 注意：是否需要加引号应由调用方基于 ValidationShared 规则判定。
+        /// Generates a quoted string literal, escaping internal characters as necessary.
+        /// Note: Whether quotes are needed should be determined by the caller based on ValidationShared rules.
         /// </summary>
         internal static string Quote(string value)
         {

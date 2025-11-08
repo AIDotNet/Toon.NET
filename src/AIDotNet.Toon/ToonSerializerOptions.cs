@@ -1,101 +1,59 @@
+#nullable enable
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using AIDotNet.Toon.Options;
+using ToonFormat.Internal.Converters;
 
-namespace AIDotNet.Toon
+namespace AIDotNet.Toon;
+
+/// <summary>
+/// 与 System.Text.Json 的 JsonSerializerOptions 风格一致的 TOON 选项聚合，
+/// 用于 ToonSerializer 便捷 API，以一个对象同时配置编码与解码相关选项。
+/// </summary>
+public sealed class ToonSerializerOptions
 {
-    /// <summary>
-    /// TOON 的统一选项配置，风格对齐 System.Text.Json。用于控制缩进、分隔符、严格模式、长度标记以及底层 JSON 行为。
-    /// </summary>
-    public enum ToonDelimiter
-    {
-        /// <summary>逗号 ,</summary>
-        Comma,
-        /// <summary>制表符 \t</summary>
-        Tab,
-        /// <summary>竖线 |</summary>
-        Pipe
-    }
+    /// <summary>每级缩进的空格数，默认 2。</summary>
+    public int Indent { get; set; } = 2;
+    /// <summary>数组行与行内原子数组分隔符，默认逗号。</summary>
+    public ToonDelimiter Delimiter { get; set; } = Constants.DEFAULT_DELIMITER_ENUM;
+    /// <summary>解码严格模式：校验行数、缩进等，默认 true。</summary>
+    public bool Strict { get; set; } = true;
+    /// <summary>数组长度标记：null 输出 [N]；true 输出 [#N]；默认 null。</summary>
+    public bool? LengthMarker { get; set; } = null;
 
     /// <summary>
-    /// TOON 序列化器选项，提供与 System.Text.Json.JsonSerializerOptions 类似的统一配置入口。
-    /// - Indent: 缩进空格数，默认 2
-    /// - Delimiter: 分隔符（逗号/制表符/竖线），默认逗号
-    /// - Strict: 解码严格模式，默认启用
-    /// - LengthMarker: 数组长度标记，可为 '#' 或 null（null 表示不启用）
-    /// - JsonOptions: 直通 System.Text.Json 的 JsonSerializerOptions，默认允许命名浮点常量以便后续归一化处理
+    /// 透传 System.Text.Json 的选项，用于对象与 JSON 的桥接及数值特殊值处理。
+    /// 默认启用命名浮点字面量并注册 NaN/±Infinity 写出为 null 的转换器。
     /// </summary>
-    public sealed class ToonSerializerOptions
+    public JsonSerializerOptions JsonOptions { get; set; } = CreateDefaultJsonOptions();
+
+    /// <summary>默认实例。</summary>
+    public static ToonSerializerOptions Default { get; } = new ToonSerializerOptions();
+
+    // 将聚合选项拆分为底层编码选项
+    internal ToonEncodeOptions ToEncodeOptions() => new ToonEncodeOptions
     {
-        /// <summary>每级缩进的空格数。默认 2。</summary>
-        public int Indent { get; init; } = 2;
+        Indent = Indent,
+        Delimiter = Delimiter,
+        LengthMarker = LengthMarker == true
+    };
 
-        /// <summary>用于表格数组和行内原子数组的分隔符。默认逗号。</summary>
-        public ToonDelimiter Delimiter { get; init; } = ToonDelimiter.Comma;
+    // 将聚合选项拆分为底层解码选项
+    internal ToonDecodeOptions ToDecodeOptions() => new ToonDecodeOptions
+    {
+        Indent = Indent,
+        Strict = Strict
+    };
 
-        /// <summary>解码严格模式。启用时将验证缩进、行数、空行与多余项等。默认 true。</summary>
-        public bool Strict { get; init; } = true;
-
-        /// <summary>可选的数组长度标记。仅支持 '#' 或 null。默认 null（不启用）。</summary>
-        public char? LengthMarker { get; init; } = null;
-
-        /// <summary>底层 System.Text.Json 行为配置。默认启用 AllowNamedFloatingPointLiterals 以允许 NaN/Infinity 后续归一化为 null。</summary>
-        public JsonSerializerOptions JsonOptions { get; init; }
-
-        /// <summary>构造函数：使用默认 JSON 选项。</summary>
-        public ToonSerializerOptions()
+    private static JsonSerializerOptions CreateDefaultJsonOptions()
+    {
+        var opts = new JsonSerializerOptions
         {
-            JsonOptions = CreateDefaultJsonOptions();
-        }
-
-        /// <summary>构造函数：指定全部选项。</summary>
-        public ToonSerializerOptions(
-            int indent,
-            ToonDelimiter delimiter,
-            bool strict = true,
-            char? lengthMarker = null,
-            JsonSerializerOptions? jsonOptions = null)
-        {
-            Indent = indent;
-            Delimiter = delimiter;
-            Strict = strict;
-            LengthMarker = lengthMarker;
-            JsonOptions = jsonOptions ?? CreateDefaultJsonOptions();
-            Validate();
-        }
-
-        /// <summary>将枚举分隔符转换为具体字符。</summary>
-        internal char GetDelimiterChar() => Delimiter switch
-        {
-            ToonDelimiter.Comma => ',',
-            ToonDelimiter.Tab => '\t',
-            ToonDelimiter.Pipe => '|',
-            _ => ','
+            WriteIndented = false,
+            NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
         };
-
-        /// <summary>校验配置是否合法。</summary>
-        internal void Validate()
-        {
-            if (Indent < 0)
-                throw new ArgumentOutOfRangeException(nameof(Indent), "Indent must be greater than or equal to 0.");
-            if (LengthMarker.HasValue && LengthMarker.Value != '#')
-                throw new ArgumentException("LengthMarker must be '#' or null.", nameof(LengthMarker));
-        }
-
-        /// <summary>创建默认的 System.Text.Json 选项。</summary>
-        private static JsonSerializerOptions CreateDefaultJsonOptions()
-        {
-            // 允许命名浮点常量，从而在编码阶段可以将 NaN/Infinity 归一化为 null（与 TS 行为一致）
-            var opts = new JsonSerializerOptions(JsonSerializerDefaults.General)
-            {
-                NumberHandling = JsonNumberHandling.AllowNamedFloatingPointLiterals
-            };
-            // 写出时将 double/float 的 NaN/Infinity 规范化为 null，其余数值保持精度
-            opts.Converters.Add(new global::Toon.Internal.Converters.DoubleNamedFloatToNullConverter());
-            opts.Converters.Add(new global::Toon.Internal.Converters.SingleNamedFloatToNullConverter());
-            return opts;
-        }
-
-        /// <summary>默认的只读预设。</summary>
-        public static ToonSerializerOptions Default { get; } = new ToonSerializerOptions();
+        opts.Converters.Add(new DoubleNamedFloatToNullConverter());
+        opts.Converters.Add(new SingleNamedFloatToNullConverter());
+        return opts;
     }
 }

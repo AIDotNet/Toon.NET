@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>模型基准测试综合报告</title>
+  <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 16px; }
+    .chart { width: 100%; height: 500px; }
+    .grid { display: grid; grid-template-columns: 1fr; gap: 24px; }
+    @media (min-width: 1100px) { .grid { grid-template-columns: 1fr 1fr; } }
+    table { border-collapse: collapse; width: 100%; margin-top: 16px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #fafafa; text-align: left; }
+    h1 { margin-bottom: 8px; }
+    h2 { margin-top: 32px; margin-bottom: 16px; }
+    .hint { color: #666; margin-bottom: 16px; }
+  </style>
+</head>
+<body>
+  <h1>模型基准测试综合报告</h1>
+  <div class="hint">测试模型：gpt-5-mini, grok-code-fast-1, gpt-4o-mini, gemini-2.5-flash, claude-haiku-4.5 | 总样本数：240</div>
+  <div class="hint" style="font-size: 0.9em; margin-top: 8px;">📊 Token（标记）：LLM API 的基本计量单位，通常 1 Token ≈ 0.75 英文单词 或 1.5-2 个中文字符。Token 数量直接影响 API 调用成本和响应速度。</div>
+  <h2>准确率对比</h2>
+  <div class="grid">
+    <div><h3>各模型在不同格式下的准确率</h3><div id="accByFormat" class="chart"></div></div>
+    <div><h3>各模型在不同任务上的平均准确率</h3><div id="accByTask" class="chart"></div></div>
+  </div>
+  <h2>输出格式合规率对比</h2>
+  <div class="grid">
+    <div><h3>各模型在不同格式下的合规率</h3><div id="fmtValidByFormat" class="chart"></div></div>
+    <div><h3>各模型在不同任务上的平均合规率</h3><div id="fmtValidByTask" class="chart"></div></div>
+  </div>
+  <h2>Token 消耗对比（计量单位：个）</h2>
+  <div class="grid">
+    <div><h3>各模型的提示 Token 消耗（按格式）</h3><div id="promptTokens" class="chart"></div></div>
+    <div><h3>各模型的生成 Token 消耗（按格式）</h3><div id="completionTokens" class="chart"></div></div>
+    <div><h3>各模型的总 Token 消耗（按格式）</h3><div id="totalTokens" class="chart"></div></div>
+    <div><h3>Token 消耗分布（箱线图，按模型）</h3><div id="tokenBox" class="chart"></div></div>
+  </div>
+  <h2>准确率热图</h2>
+  <div class="grid">
+    <div><h3>模型 × 格式 准确率热图（%）</h3><div id="heatModelFormat" class="chart"></div></div>
+    <div><h3>模型 × 任务 准确率热图（%）</h3><div id="heatModelTask" class="chart"></div></div>
+  </div>
+  <h2>汇总数据表</h2>
+  <table>
+    <thead><tr><th>模型</th><th>格式</th><th>准确率 (%)</th><th>输出格式合规率 (%)</th><th>平均提示 Token 数</th><th>平均生成 Token 数</th><th>平均总 Token 数</th></tr></thead>
+    <tbody>
+      <tr><td>claude-haiku-4.5</td><td>JSON</td><td>50.0</td><td>16.7</td><td>433.6</td><td>18.4</td><td>452.0</td></tr>
+      <tr><td>claude-haiku-4.5</td><td>JSON compact</td><td>50.0</td><td>33.3</td><td>269.7</td><td>13.8</td><td>283.4</td></tr>
+      <tr><td>claude-haiku-4.5</td><td>TOON</td><td>83.3</td><td>91.7</td><td>297.2</td><td>8.8</td><td>306.0</td></tr>
+      <tr><td>claude-haiku-4.5</td><td>YAML</td><td>66.7</td><td>66.7</td><td>293.8</td><td>8.8</td><td>302.7</td></tr>
+      <tr><td>gemini-2.5-flash</td><td>JSON</td><td>75.0</td><td>83.3</td><td>404.3</td><td>135.2</td><td>539.6</td></tr>
+      <tr><td>gemini-2.5-flash</td><td>JSON compact</td><td>75.0</td><td>83.3</td><td>240.8</td><td>172.8</td><td>413.7</td></tr>
+      <tr><td>gemini-2.5-flash</td><td>TOON</td><td>83.3</td><td>100.0</td><td>271.2</td><td>184.2</td><td>455.3</td></tr>
+      <tr><td>gemini-2.5-flash</td><td>YAML</td><td>91.7</td><td>91.7</td><td>292.3</td><td>156.4</td><td>448.8</td></tr>
+      <tr><td>gpt-4o-mini</td><td>JSON</td><td>50.0</td><td>66.7</td><td>373.8</td><td>8.2</td><td>382.0</td></tr>
+      <tr><td>gpt-4o-mini</td><td>JSON compact</td><td>50.0</td><td>25.0</td><td>247.6</td><td>7.0</td><td>254.6</td></tr>
+      <tr><td>gpt-4o-mini</td><td>TOON</td><td>83.3</td><td>100.0</td><td>277.1</td><td>3.9</td><td>281.0</td></tr>
+      <tr><td>gpt-4o-mini</td><td>YAML</td><td>50.0</td><td>50.0</td><td>287.4</td><td>8.2</td><td>295.6</td></tr>
+      <tr><td>gpt-5-mini</td><td>JSON</td><td>58.3</td><td>91.7</td><td>361.4</td><td>233.0</td><td>594.4</td></tr>
+      <tr><td>gpt-5-mini</td><td>JSON compact</td><td>58.3</td><td>91.7</td><td>240.2</td><td>249.0</td><td>489.2</td></tr>
+      <tr><td>gpt-5-mini</td><td>TOON</td><td>75.0</td><td>100.0</td><td>266.8</td><td>158.7</td><td>425.5</td></tr>
+      <tr><td>gpt-5-mini</td><td>YAML</td><td>83.3</td><td>75.0</td><td>277.8</td><td>238.2</td><td>516.0</td></tr>
+      <tr><td>grok-code-fast-1</td><td>JSON</td><td>58.3</td><td>50.0</td><td>580.5</td><td>6.0</td><td>586.5</td></tr>
+      <tr><td>grok-code-fast-1</td><td>JSON compact</td><td>66.7</td><td>75.0</td><td>443.1</td><td>4.5</td><td>447.6</td></tr>
+      <tr><td>grok-code-fast-1</td><td>TOON</td><td>100.0</td><td>100.0</td><td>477.7</td><td>3.5</td><td>481.2</td></tr>
+      <tr><td>grok-code-fast-1</td><td>YAML</td><td>66.7</td><td>58.3</td><td>461.8</td><td>4.3</td><td>466.2</td></tr>
+    </tbody>
+  </table>
+
+  <script>
+    const modelNames = ["gpt-5-mini","grok-code-fast-1","gpt-4o-mini","gemini-2.5-flash","claude-haiku-4.5"];
+    const formats = ["JSON","JSON compact","TOON","YAML"];
+    const allTasks = ["\u5E03\u5C14\u903B\u8F91","\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C","\u60C5\u611F\u5206\u7C7B","\u65E5\u671F\u5DEE\u503C","\u6570\u5B57\u6392\u5E8F","\u63D0\u53D6\u90AE\u7BB1","\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF","\u552F\u4E00\u503C\u8BA1\u6570","\u6574\u6570\u76F8\u4E58","\u4E3B\u5730\u5740\u90AE\u7F16","\u603B\u6536\u5165","\u6700\u9AD8\u5206\u540D\u79F0"];
+    const accByFormat = {"gpt-5-mini":{"JSON":58.3,"JSON compact":58.3,"TOON":75,"YAML":83.3},"grok-code-fast-1":{"JSON":58.3,"JSON compact":66.7,"TOON":100,"YAML":66.7},"gpt-4o-mini":{"JSON":50,"JSON compact":50,"TOON":83.3,"YAML":50},"gemini-2.5-flash":{"JSON":75,"JSON compact":75,"TOON":83.3,"YAML":91.7},"claude-haiku-4.5":{"JSON":50,"JSON compact":50,"TOON":83.3,"YAML":66.7}};
+    const accByTask = {"gpt-5-mini":{"\u5E03\u5C14\u903B\u8F91":100,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":100,"\u60C5\u611F\u5206\u7C7B":50,"\u65E5\u671F\u5DEE\u503C":100,"\u6570\u5B57\u6392\u5E8F":50,"\u63D0\u53D6\u90AE\u7BB1":0,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":100,"\u552F\u4E00\u503C\u8BA1\u6570":100,"\u6574\u6570\u76F8\u4E58":100,"\u4E3B\u5730\u5740\u90AE\u7F16":0,"\u603B\u6536\u5165":100,"\u6700\u9AD8\u5206\u540D\u79F0":25},"grok-code-fast-1":{"\u5E03\u5C14\u903B\u8F91":75,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":100,"\u60C5\u611F\u5206\u7C7B":25,"\u65E5\u671F\u5DEE\u503C":100,"\u6570\u5B57\u6392\u5E8F":100,"\u63D0\u53D6\u90AE\u7BB1":50,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":100,"\u552F\u4E00\u503C\u8BA1\u6570":100,"\u6574\u6570\u76F8\u4E58":75,"\u4E3B\u5730\u5740\u90AE\u7F16":25,"\u603B\u6536\u5165":100,"\u6700\u9AD8\u5206\u540D\u79F0":25},"gpt-4o-mini":{"\u5E03\u5C14\u903B\u8F91":25,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":100,"\u60C5\u611F\u5206\u7C7B":100,"\u65E5\u671F\u5DEE\u503C":100,"\u6570\u5B57\u6392\u5E8F":75,"\u63D0\u53D6\u90AE\u7BB1":25,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":50,"\u552F\u4E00\u503C\u8BA1\u6570":75,"\u6574\u6570\u76F8\u4E58":100,"\u4E3B\u5730\u5740\u90AE\u7F16":25,"\u603B\u6536\u5165":0,"\u6700\u9AD8\u5206\u540D\u79F0":25},"gemini-2.5-flash":{"\u5E03\u5C14\u903B\u8F91":100,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":100,"\u60C5\u611F\u5206\u7C7B":100,"\u65E5\u671F\u5DEE\u503C":100,"\u6570\u5B57\u6392\u5E8F":100,"\u63D0\u53D6\u90AE\u7BB1":25,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":100,"\u552F\u4E00\u503C\u8BA1\u6570":100,"\u6574\u6570\u76F8\u4E58":75,"\u4E3B\u5730\u5740\u90AE\u7F16":25,"\u603B\u6536\u5165":100,"\u6700\u9AD8\u5206\u540D\u79F0":50},"claude-haiku-4.5":{"\u5E03\u5C14\u903B\u8F91":50,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":100,"\u60C5\u611F\u5206\u7C7B":50,"\u65E5\u671F\u5DEE\u503C":100,"\u6570\u5B57\u6392\u5E8F":100,"\u63D0\u53D6\u90AE\u7BB1":25,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":100,"\u552F\u4E00\u503C\u8BA1\u6570":100,"\u6574\u6570\u76F8\u4E58":75,"\u4E3B\u5730\u5740\u90AE\u7F16":0,"\u603B\u6536\u5165":0,"\u6700\u9AD8\u5206\u540D\u79F0":50}};
+    const formatValidByFormat = {"gpt-5-mini":{"JSON":91.7,"JSON compact":91.7,"TOON":100,"YAML":75},"grok-code-fast-1":{"JSON":50,"JSON compact":75,"TOON":100,"YAML":58.3},"gpt-4o-mini":{"JSON":66.7,"JSON compact":25,"TOON":100,"YAML":50},"gemini-2.5-flash":{"JSON":83.3,"JSON compact":83.3,"TOON":100,"YAML":91.7},"claude-haiku-4.5":{"JSON":16.7,"JSON compact":33.3,"TOON":91.7,"YAML":66.7}};
+    const fmtValidByTask = {"gpt-5-mini":{"\u5E03\u5C14\u903B\u8F91":100,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":100,"\u60C5\u611F\u5206\u7C7B":100,"\u65E5\u671F\u5DEE\u503C":75,"\u6570\u5B57\u6392\u5E8F":100,"\u63D0\u53D6\u90AE\u7BB1":75,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":100,"\u552F\u4E00\u503C\u8BA1\u6570":100,"\u6574\u6570\u76F8\u4E58":100,"\u4E3B\u5730\u5740\u90AE\u7F16":25,"\u603B\u6536\u5165":100,"\u6700\u9AD8\u5206\u540D\u79F0":100},"grok-code-fast-1":{"\u5E03\u5C14\u903B\u8F91":100,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":75,"\u60C5\u611F\u5206\u7C7B":25,"\u65E5\u671F\u5DEE\u503C":75,"\u6570\u5B57\u6392\u5E8F":50,"\u63D0\u53D6\u90AE\u7BB1":100,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":75,"\u552F\u4E00\u503C\u8BA1\u6570":75,"\u6574\u6570\u76F8\u4E58":50,"\u4E3B\u5730\u5740\u90AE\u7F16":75,"\u603B\u6536\u5165":100,"\u6700\u9AD8\u5206\u540D\u79F0":50},"gpt-4o-mini":{"\u5E03\u5C14\u903B\u8F91":75,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":75,"\u60C5\u611F\u5206\u7C7B":50,"\u65E5\u671F\u5DEE\u503C":50,"\u6570\u5B57\u6392\u5E8F":50,"\u63D0\u53D6\u90AE\u7BB1":50,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":100,"\u552F\u4E00\u503C\u8BA1\u6570":25,"\u6574\u6570\u76F8\u4E58":100,"\u4E3B\u5730\u5740\u90AE\u7F16":50,"\u603B\u6536\u5165":75,"\u6700\u9AD8\u5206\u540D\u79F0":25},"gemini-2.5-flash":{"\u5E03\u5C14\u903B\u8F91":100,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":100,"\u60C5\u611F\u5206\u7C7B":50,"\u65E5\u671F\u5DEE\u503C":100,"\u6570\u5B57\u6392\u5E8F":50,"\u63D0\u53D6\u90AE\u7BB1":100,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":100,"\u552F\u4E00\u503C\u8BA1\u6570":100,"\u6574\u6570\u76F8\u4E58":75,"\u4E3B\u5730\u5740\u90AE\u7F16":100,"\u603B\u6536\u5165":100,"\u6700\u9AD8\u5206\u540D\u79F0":100},"claude-haiku-4.5":{"\u5E03\u5C14\u903B\u8F91":75,"\u8D85\u8FC7\u9608\u503C\u6570\u91CF\u6C42\u548C":75,"\u60C5\u611F\u5206\u7C7B":50,"\u65E5\u671F\u5DEE\u503C":50,"\u6570\u5B57\u6392\u5E8F":50,"\u63D0\u53D6\u90AE\u7BB1":25,"\u7EDF\u8BA1\u9879\u76EE\u6570\u91CF":75,"\u552F\u4E00\u503C\u8BA1\u6570":25,"\u6574\u6570\u76F8\u4E58":50,"\u4E3B\u5730\u5740\u90AE\u7F16":0,"\u603B\u6536\u5165":100,"\u6700\u9AD8\u5206\u540D\u79F0":50}};
+    const promptTokensByFormat = {"gpt-5-mini":{"JSON":361.4,"JSON compact":240.2,"TOON":266.8,"YAML":277.8},"grok-code-fast-1":{"JSON":580.5,"JSON compact":443.1,"TOON":477.7,"YAML":461.8},"gpt-4o-mini":{"JSON":373.8,"JSON compact":247.6,"TOON":277.1,"YAML":287.4},"gemini-2.5-flash":{"JSON":404.3,"JSON compact":240.8,"TOON":271.2,"YAML":292.3},"claude-haiku-4.5":{"JSON":433.6,"JSON compact":269.7,"TOON":297.2,"YAML":293.8}};
+    const completionTokensByFormat = {"gpt-5-mini":{"JSON":233,"JSON compact":249,"TOON":158.7,"YAML":238.2},"grok-code-fast-1":{"JSON":6,"JSON compact":4.5,"TOON":3.5,"YAML":4.3},"gpt-4o-mini":{"JSON":8.2,"JSON compact":7,"TOON":3.9,"YAML":8.2},"gemini-2.5-flash":{"JSON":135.2,"JSON compact":172.8,"TOON":184.2,"YAML":156.4},"claude-haiku-4.5":{"JSON":18.4,"JSON compact":13.8,"TOON":8.8,"YAML":8.8}};
+    const totalTokensByFormat = {"gpt-5-mini":{"JSON":594.4,"JSON compact":489.2,"TOON":425.5,"YAML":516},"grok-code-fast-1":{"JSON":586.5,"JSON compact":447.6,"TOON":481.2,"YAML":466.2},"gpt-4o-mini":{"JSON":382,"JSON compact":254.6,"TOON":281,"YAML":295.6},"gemini-2.5-flash":{"JSON":539.6,"JSON compact":413.7,"TOON":455.3,"YAML":448.8},"claude-haiku-4.5":{"JSON":452,"JSON compact":283.4,"TOON":306,"YAML":302.7}};
+    const tokenBoxData = {"gpt-5-mini":[555,555,343,442,847,556,564,682,535,608,278,630,463,353,294,307,683,714,413,639,727,546,593,535,747,473,478,607,537,412,410,428,247,270,151,346,621,388,627,575,541,555,402,589,630,440,553,412],"grok-code-fast-1":[1127,932,573,839,982,916,882,1108,1144,1018,639,774,1262,3460,1026,3180,857,878,788,827,1193,849,741,919,1469,989,945,1184,846,1406,552,1319,879,694,485,0,963,957,803,914,1073,1350,2458,1271,996,818,711,720],"gpt-4o-mini":[296,231,207,242,392,250,292,294,347,244,243,262,199,157,158,177,271,182,201,229,530,352,387,403,858,508,625,629,242,164,154,188,175,134,143,146,405,269,298,318,544,350,418,413,325,214,246,246],"gemini-2.5-flash":[567,420,381,426,712,508,622,574,511,376,353,378,424,290,266,290,487,365,415,408,706,488,506,545,637,349,418,459,392,282,374,332,281,209,225,0,449,305,625,350,722,531,604,694,587,841,675,929],"claude-haiku-4.5":[342,242,227,250,676,392,457,446,526,343,321,360,240,173,169,180,325,211,231,266,625,386,416,428,663,386,446,448,277,177,180,192,210,147,151,0,485,306,337,342,627,376,443,435,428,262,294,285]};
+    const heatModelFormatZ = [[58.3,58.3,75,83.3],[58.3,66.7,100,66.7],[50,50,83.3,50],[75,75,83.3,91.7],[50,50,83.3,66.7]];
+    const heatModelTaskZ = [[100,100,50,100,50,0,100,100,100,0,100,25],[75,100,25,100,100,50,100,100,75,25,100,25],[25,100,100,100,75,25,50,75,100,25,0,25],[100,100,100,100,100,25,100,100,75,25,100,50],[50,100,50,100,100,25,100,100,75,0,0,50]];
+    const accByFormatTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => accByFormat[m][f]), name: m, type: 'bar' }));
+    Plotly.newPlot('accByFormat', accByFormatTraces, { barmode: 'group', yaxis: { title: '准确率（%）', range: [0, 100] }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 60, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });
+    const accByTaskTraces = modelNames.map(m => ({ x: allTasks, y: allTasks.map(t => accByTask[m][t]), name: m, type: 'bar' }));
+    Plotly.newPlot('accByTask', accByTaskTraces, { barmode: 'group', yaxis: { title: '准确率（%）', range: [0, 100] }, xaxis: { title: '任务' }, margin: { t: 20, r: 10, l: 60, b: 120 }, legend: { orientation: 'h' } }, { responsive: true });
+    const fmtValidByFormatTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => formatValidByFormat[m][f]), name: m, type: 'bar' }));
+    Plotly.newPlot('fmtValidByFormat', fmtValidByFormatTraces, { barmode: 'group', yaxis: { title: '输出格式合规率（%）', range: [0, 100] }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 60, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });
+    const fmtValidByTaskTraces = modelNames.map(m => ({ x: allTasks, y: allTasks.map(t => fmtValidByTask[m][t]), name: m, type: 'bar' }));
+    Plotly.newPlot('fmtValidByTask', fmtValidByTaskTraces, { barmode: 'group', yaxis: { title: '输出格式合规率（%）', range: [0, 100] }, xaxis: { title: '任务' }, margin: { t: 20, r: 10, l: 60, b: 120 }, legend: { orientation: 'h' } }, { responsive: true });
+    const promptTokensTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => promptTokensByFormat[m][f]), name: m, type: 'bar' }));
+    Plotly.newPlot('promptTokens', promptTokensTraces, { barmode: 'group', yaxis: { title: '平均提示 Token 数量（个）' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });
+    const completionTokensTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => completionTokensByFormat[m][f]), name: m, type: 'bar' }));
+    Plotly.newPlot('completionTokens', completionTokensTraces, { barmode: 'group', yaxis: { title: '平均生成 Token 数量（个）' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });
+    const totalTokensTraces = modelNames.map(m => ({ x: formats, y: formats.map(f => totalTokensByFormat[m][f]), name: m, type: 'bar' }));
+    Plotly.newPlot('totalTokens', totalTokensTraces, { barmode: 'group', yaxis: { title: '平均总 Token 数量（个）' }, xaxis: { title: '格式' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });
+    const tokenBoxTraces = modelNames.map(m => ({ y: tokenBoxData[m], name: m, type: 'box', boxmean: true }));
+    Plotly.newPlot('tokenBox', tokenBoxTraces, { yaxis: { title: 'Token 数量（个）' }, margin: { t: 20, r: 10, l: 80, b: 80 }, legend: { orientation: 'h' } }, { responsive: true });
+    Plotly.newPlot('heatModelFormat', [{ z: heatModelFormatZ, x: formats, y: modelNames, type: 'heatmap', colorscale: 'Viridis', zmin: 0, zmax: 100 }], { xaxis: { title: '格式' }, yaxis: { title: '模型' }, margin: { t: 20, r: 10, l: 100, b: 80 } }, { responsive: true });
+    Plotly.newPlot('heatModelTask', [{ z: heatModelTaskZ, x: allTasks, y: modelNames, type: 'heatmap', colorscale: 'Viridis', zmin: 0, zmax: 100 }], { xaxis: { title: '任务' }, yaxis: { title: '模型' }, margin: { t: 20, r: 10, l: 100, b: 120 } }, { responsive: true });
+  </script>
+</body>
+</html>

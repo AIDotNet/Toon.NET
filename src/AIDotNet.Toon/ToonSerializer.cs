@@ -1,160 +1,177 @@
 #nullable enable
-using System.IO;
 using System.Text;
-using System.Runtime.CompilerServices;
 using System.Text.Json;
+using System.Text.Json.Nodes;
+using AIDotNet.Toon.Options;
 
-namespace AIDotNet.Toon
+namespace AIDotNet.Toon;
+
+/// <summary>
+/// 提供类似 System.Text.Json 的简洁 API，用于 TOON 与对象 / JSON 之间互转。
+/// </summary>
+public static class ToonSerializer
 {
-    /// <summary>
-    /// 提供与 System.Text.Json 风格一致的 TOON 编解码入口，统一由 <see cref="ToonSerializerOptions"/> 控制行为。
-    /// Serialize 路径: .NET 对象 -> JsonElement -> TOON 文本
-    /// Deserialize 路径: TOON 文本 -> JSON 字符串/DOM -> 目标类型
-    /// </summary>
-    public static class ToonSerializer
+    // ===================== TOON -> JSON 字符串 =====================
+    /// <summary>toon 字符串 -> json 字符串。</summary>
+    public static string ToonToJson(string toon, ToonDecodeOptions? options = null)
     {
-        private static readonly Encoding Utf8NoBomStrict = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false, throwOnInvalidBytes: true);
+        var node = ToonDecoder.Decode(toon, options ?? new ToonDecodeOptions());
+        return node?.ToJsonString() ?? "null";
+    }
 
-        // ========= 字符串 API =========
+    /// <summary>toon 字符串 -> json 字符串（聚合选项）。</summary>
+    public static string ToonToJson(string toon, ToonSerializerOptions? options)
+    {
+        var node = ToonDecoder.Decode(toon, (options ?? ToonSerializerOptions.Default).ToDecodeOptions());
+        return node?.ToJsonString(options?.JsonOptions) ?? "null";
+    }
 
-        /// <summary>将 .NET 对象编码为 TOON 文本。</summary>
-        public static string Serialize<T>(T value, ToonSerializerOptions? options = null)
-        {
-            options ??= ToonSerializerOptions.Default;
-            var element = JsonSerializer.SerializeToElement(value, options.JsonOptions);
-            return ToonEncoder.Encode(element, options);
-        }
+    /// <summary>toon UTF-8 字节 -> json 字符串。</summary>
+    public static string ToonToJson(byte[] utf8Toon, ToonDecodeOptions? options = null)
+    {
+        var node = ToonDecoder.Decode(utf8Toon, options ?? new ToonDecodeOptions());
+        return node?.ToJsonString() ?? "null";
+    }
 
-        /// <summary>将 .NET 对象（使用显式类型）编码为 TOON 文本。</summary>
-        public static string Serialize(object? value, Type inputType, ToonSerializerOptions? options = null)
-        {
-            if (inputType is null) throw new ArgumentNullException(nameof(inputType));
-            options ??= ToonSerializerOptions.Default;
+    /// <summary>toon UTF-8 字节 -> json 字符串（聚合选项）。</summary>
+    public static string ToonToJson(byte[] utf8Toon, ToonSerializerOptions? options)
+    {
+        var node = ToonDecoder.Decode(utf8Toon, (options ?? ToonSerializerOptions.Default).ToDecodeOptions());
+        return node?.ToJsonString(options?.JsonOptions) ?? "null";
+    }
 
-            // 使用显式类型序列化为 JsonElement，以保持精度与转换器行为
-            var element = JsonSerializer.SerializeToElement(value, inputType, options.JsonOptions);
-            return ToonEncoder.Encode(element, options);
-        }
+    /// <summary>toon 流(UTF-8) -> json 字符串。流保持打开。</summary>
+    public static string ToonToJson(Stream toonStream, ToonDecodeOptions? options = null)
+    {
+        var node = ToonDecoder.Decode(toonStream, options ?? new ToonDecodeOptions());
+        return node?.ToJsonString() ?? "null";
+    }
 
-        /// <summary>将 TOON 文本解码为 .NET 对象。</summary>
-        public static T? Deserialize<T>(string toon, ToonSerializerOptions? options = null)
-        {
-            if (toon is null) throw new ArgumentNullException(nameof(toon));
-            options ??= ToonSerializerOptions.Default;
+    /// <summary>toon 流(UTF-8) -> json 字符串（聚合选项）。流保持打开。</summary>
+    public static string ToonToJson(Stream toonStream, ToonSerializerOptions? options)
+    {
+        var node = ToonDecoder.Decode(toonStream, (options ?? ToonSerializerOptions.Default).ToDecodeOptions());
+        return node?.ToJsonString(options?.JsonOptions) ?? "null";
+    }
 
-            // 先解码为 JSON（字符串或 DOM），再交给 System.Text.Json
-            var json = ToonDecoder.DecodeToJsonString(toon, options);
-            return JsonSerializer.Deserialize<T>(json, options.JsonOptions);
-        }
+    // ===================== TOON -> 对象 =====================
+    /// <summary>toon 字符串 -> T 对象。</summary>
+    public static T? Deserialize<T>(string toon, ToonDecodeOptions? options = null)
+        => ToonDecoder.Decode<T>(toon, options ?? new ToonDecodeOptions());
 
-        /// <summary>将 TOON 文本解码为指定类型实例。</summary>
-        public static object? Deserialize(string toon, Type returnType, ToonSerializerOptions? options = null)
-        {
-            if (toon is null) throw new ArgumentNullException(nameof(toon));
-            if (returnType is null) throw new ArgumentNullException(nameof(returnType));
-            options ??= ToonSerializerOptions.Default;
+    /// <summary>toon 字符串 -> T 对象（聚合选项）。</summary>
+    public static T? Deserialize<T>(string toon, ToonSerializerOptions? options)
+        => ToonDecoder.Decode<T>(toon, (options ?? ToonSerializerOptions.Default).ToDecodeOptions());
 
-            var json = ToonDecoder.DecodeToJsonString(toon, options);
-            return JsonSerializer.Deserialize(json, returnType, options.JsonOptions);
-        }
+    /// <summary>toon UTF-8 字节 -> T 对象。</summary>
+    public static T? Deserialize<T>(byte[] utf8Toon, ToonDecodeOptions? options = null)
+        => ToonDecoder.Decode<T>(utf8Toon, options ?? new ToonDecodeOptions());
 
-        // ========= byte[] / Span API =========
+    /// <summary>toon UTF-8 字节 -> T 对象（聚合选项）。</summary>
+    public static T? Deserialize<T>(byte[] utf8Toon, ToonSerializerOptions? options)
+        => ToonDecoder.Decode<T>(utf8Toon, (options ?? ToonSerializerOptions.Default).ToDecodeOptions());
 
-        /// <summary>将 .NET 对象编码为 UTF-8 字节（无 BOM）。</summary>
-        public static byte[] SerializeToUtf8Bytes<T>(T value, ToonSerializerOptions? options = null)
-        {
-            var text = Serialize(value, options);
-            return Utf8NoBomStrict.GetBytes(text);
-        }
+    /// <summary>toon 流(UTF-8) -> T 对象。流保持打开。</summary>
+    public static T? Deserialize<T>(Stream toonStream, ToonDecodeOptions? options = null)
+        => ToonDecoder.Decode<T>(toonStream, options ?? new ToonDecodeOptions());
 
-        /// <summary>将 .NET 对象（显式类型）编码为 UTF-8 字节（无 BOM）。</summary>
-        public static byte[] SerializeToUtf8Bytes(object? value, Type inputType, ToonSerializerOptions? options = null)
-        {
-            var text = Serialize(value, inputType, options);
-            return Utf8NoBomStrict.GetBytes(text);
-        }
+    /// <summary>toon 流(UTF-8) -> T 对象（聚合选项）。流保持打开。</summary>
+    public static T? Deserialize<T>(Stream toonStream, ToonSerializerOptions? options)
+        => ToonDecoder.Decode<T>(toonStream, (options ?? ToonSerializerOptions.Default).ToDecodeOptions());
 
-        /// <summary>从 UTF-8 字节解码为 .NET 对象。</summary>
-        public static T? Deserialize<T>(byte[] utf8Bytes, ToonSerializerOptions? options = null)
-            => Deserialize<T>(utf8Bytes.AsSpan(), options);
+    // ===================== JSON / 对象 -> TOON 字符串 =====================
+    /// <summary>JSON 字符串 -> toon 字符串。</summary>
+    public static string JsonToToon(string json, ToonEncodeOptions? options = null, JsonDocumentOptions docOptions = default)
+    {
+        if (json == null) throw new ArgumentNullException(nameof(json));
+        JsonNode? node = JsonNode.Parse(json, null, docOptions);
+        return ToonEncoder.Encode(node, options ?? new ToonEncodeOptions());
+    }
 
-        /// <summary>
-        /// 从 UTF-8 只读字节解码为 .NET 对象。
-        /// 性能说明：Encoding.GetString(ReadOnlySpan<byte>) 直接从 Span 解码为单个字符串分配，无中间缓冲拷贝；
-        /// 这是在当前解码管线（基于 string 的扫描/解析）下最少分配的做法。若需进一步优化，应让解码器改为基于
-        /// ReadOnlySpan<char> / 逐段扫描以避免整体字符串实体化，这属于未来的流水线级改造。
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static T? Deserialize<T>(ReadOnlySpan<byte> utf8Bytes, ToonSerializerOptions? options = null)
-        {
-            if (utf8Bytes.Length == 0)
-                throw new ArgumentException("Cannot decode empty UTF-8 payload.", nameof(utf8Bytes));
+    /// <summary>JSON 字符串 -> toon 字符串（聚合选项）。</summary>
+    public static string JsonToToon(string json, ToonSerializerOptions? options)
+    {
+        if (json == null) throw new ArgumentNullException(nameof(json));
+        var opts = options ?? ToonSerializerOptions.Default;
+        // 使用 JsonSerializer 以支持命名浮点字面量等行为
+        JsonNode? node = JsonSerializer.Deserialize<JsonNode?>(json, opts.JsonOptions);
+        return ToonEncoder.Encode(node, opts.ToEncodeOptions());
+    }
 
-            var toon = Utf8NoBomStrict.GetString(utf8Bytes);
-            return Deserialize<T>(toon, options);
-        }
+    /// <summary>JSON UTF-8 字节 -> toon 字符串。</summary>
+    public static string JsonToToon(byte[] utf8Json, ToonEncodeOptions? options = null, JsonDocumentOptions docOptions = default)
+    {
+        if (utf8Json == null) throw new ArgumentNullException(nameof(utf8Json));
+        JsonNode? node = JsonNode.Parse(utf8Json, null, docOptions);
+        return ToonEncoder.Encode(node, options ?? new ToonEncodeOptions());
+    }
 
-        /// <summary>从 UTF-8 字节解码为指定类型实例。</summary>
-        public static object? Deserialize(byte[] utf8Bytes, Type returnType, ToonSerializerOptions? options = null)
-            => Deserialize(utf8Bytes.AsSpan(), returnType, options);
+    /// <summary>JSON UTF-8 字节 -> toon 字符串（聚合选项）。</summary>
+    public static string JsonToToon(byte[] utf8Json, ToonSerializerOptions? options)
+    {
+        if (utf8Json == null) throw new ArgumentNullException(nameof(utf8Json));
+        var opts = options ?? ToonSerializerOptions.Default;
+        JsonNode? node = JsonSerializer.Deserialize<JsonNode?>(utf8Json, opts.JsonOptions);
+        return ToonEncoder.Encode(node, opts.ToEncodeOptions());
+    }
 
-        /// <summary>
-        /// 从 UTF-8 只读字节解码为指定类型实例。
-        /// 性能说明：同上，单次字符串分配+解码，避免额外拷贝；严格 UTF-8（无 BOM）在遇到非法序列时立即抛出异常。
-        /// </summary>
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static object? Deserialize(ReadOnlySpan<byte> utf8Bytes, Type returnType, ToonSerializerOptions? options = null)
-        {
-            if (returnType is null) throw new ArgumentNullException(nameof(returnType));
-            if (utf8Bytes.Length == 0)
-                throw new ArgumentException("Cannot decode empty UTF-8 payload.", nameof(utf8Bytes));
+    /// <summary>JSON 流(UTF-8) -> toon 字符串。流保持打开。</summary>
+    public static string JsonToToon(Stream jsonStream, ToonEncodeOptions? options = null, JsonDocumentOptions docOptions = default)
+    {
+        if (jsonStream == null) throw new ArgumentNullException(nameof(jsonStream));
+        using var reader = new StreamReader(jsonStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+        var json = reader.ReadToEnd();
+        JsonNode? node = JsonNode.Parse(json, null, docOptions);
+        return ToonEncoder.Encode(node, options ?? new ToonEncodeOptions());
+    }
 
-            var toon = Utf8NoBomStrict.GetString(utf8Bytes);
-            return Deserialize(toon, returnType, options);
-        }
+    /// <summary>JSON 流(UTF-8) -> toon 字符串（聚合选项）。流保持打开。</summary>
+    public static string JsonToToon(Stream jsonStream, ToonSerializerOptions? options)
+    {
+        if (jsonStream == null) throw new ArgumentNullException(nameof(jsonStream));
+        using var reader = new StreamReader(jsonStream, Encoding.UTF8, detectEncodingFromByteOrderMarks: true, leaveOpen: true);
+        var json = reader.ReadToEnd();
+        var opts = options ?? ToonSerializerOptions.Default;
+        JsonNode? node = JsonSerializer.Deserialize<JsonNode?>(json, opts.JsonOptions);
+        return ToonEncoder.Encode(node, opts.ToEncodeOptions());
+    }
 
-        // ========= Stream API =========
+    /// <summary>对象 T -> toon 字符串。</summary>
+    public static string Serialize<T>(T value, ToonEncodeOptions? options = null)
+        => ToonEncoder.Encode(value, options ?? new ToonEncodeOptions());
 
-        /// <summary>将 .NET 对象编码为 TOON，并写入 UTF-8 流（无 BOM，保持流打开）。</summary>
-        public static void Serialize<T>(T value, Stream utf8Stream, ToonSerializerOptions? options = null)
-        {
-            if (utf8Stream is null) throw new ArgumentNullException(nameof(utf8Stream));
-            var bytes = SerializeToUtf8Bytes(value, options);
-            utf8Stream.Write(bytes, 0, bytes.Length);
-        }
+    /// <summary>对象 T -> toon 字符串（聚合选项）。</summary>
+    public static string Serialize<T>(T value, ToonSerializerOptions? options)
+        => ToonEncoder.Encode(value, (options ?? ToonSerializerOptions.Default).ToEncodeOptions());
 
-        /// <summary>将 .NET 对象（显式类型）编码为 TOON，并写入 UTF-8 流（无 BOM，保持流打开）。</summary>
-        public static void Serialize(object? value, Type inputType, Stream utf8Stream, ToonSerializerOptions? options = null)
-        {
-            if (inputType is null) throw new ArgumentNullException(nameof(inputType));
-            if (utf8Stream is null) throw new ArgumentNullException(nameof(utf8Stream));
-            var bytes = SerializeToUtf8Bytes(value, inputType, options);
-            utf8Stream.Write(bytes, 0, bytes.Length);
-        }
+    /// <summary>对象 -> toon 字符串。</summary>
+    public static string Serialize(object? value, ToonEncodeOptions? options = null)
+        => ToonEncoder.Encode(value, options ?? new ToonEncodeOptions());
 
-        /// <summary>从 UTF-8 流解码为 .NET 对象（保持流打开）。</summary>
-        public static T? Deserialize<T>(Stream utf8Stream, ToonSerializerOptions? options = null)
-        {
-            if (utf8Stream is null) throw new ArgumentNullException(nameof(utf8Stream));
-            var toon = ReadToEndUtf8(utf8Stream);
-            return Deserialize<T>(toon, options);
-        }
+    /// <summary>对象 -> toon 字符串（聚合选项）。</summary>
+    public static string Serialize(object? value, ToonSerializerOptions? options)
+        => ToonEncoder.Encode(value, (options ?? ToonSerializerOptions.Default).ToEncodeOptions());
 
-        /// <summary>从 UTF-8 流解码为指定类型实例（保持流打开）。</summary>
-        public static object? Deserialize(Stream utf8Stream, Type returnType, ToonSerializerOptions? options = null)
-        {
-            if (utf8Stream is null) throw new ArgumentNullException(nameof(utf8Stream));
-            if (returnType is null) throw new ArgumentNullException(nameof(returnType));
-            var toon = ReadToEndUtf8(utf8Stream);
-            return Deserialize(toon, returnType, options);
-        }
+    /// <summary>JSON UTF-8 字节 -> toon 字符串（同 JsonToToon）。提供与 System.Text.Json 类似的命名。</summary>
+    public static string SerializeJsonBytesToToon(byte[] utf8Json, ToonEncodeOptions? options = null, JsonDocumentOptions docOptions = default)
+        => JsonToToon(utf8Json, options, docOptions);
 
-        // ========= helpers =========
+    /// <summary>JSON 流 -> toon 字符串（同 JsonToToon）。</summary>
+    public static string SerializeJsonStreamToToon(Stream jsonStream, ToonEncodeOptions? options = null, JsonDocumentOptions docOptions = default)
+        => JsonToToon(jsonStream, options, docOptions);
 
-        private static string ReadToEndUtf8(Stream stream)
-        {
-            using var reader = new StreamReader(stream, Utf8NoBomStrict, detectEncodingFromByteOrderMarks: false, bufferSize: 4096, leaveOpen: true);
-            return reader.ReadToEnd();
-        }
+    // ===================== 额外便捷：TOON UTF-8 -> TOON 字符串（规范化） =====================
+    /// <summary>将 TOON UTF-8 字节解码再重新编码（用于规范化）。</summary>
+    public static string NormalizeToon(byte[] utf8Toon, ToonDecodeOptions? decodeOptions = null, ToonEncodeOptions? encodeOptions = null)
+    {
+        var node = ToonDecoder.Decode(utf8Toon, decodeOptions ?? new ToonDecodeOptions());
+        return ToonEncoder.Encode(node, encodeOptions ?? new ToonEncodeOptions());
+    }
+
+    /// <summary>将 TOON 流解码再重新编码（用于规范化）。</summary>
+    public static string NormalizeToon(Stream toonStream, ToonDecodeOptions? decodeOptions = null, ToonEncodeOptions? encodeOptions = null)
+    {
+        var node = ToonDecoder.Decode(toonStream, decodeOptions ?? new ToonDecodeOptions());
+        return ToonEncoder.Encode(node, encodeOptions ?? new ToonEncodeOptions());
     }
 }

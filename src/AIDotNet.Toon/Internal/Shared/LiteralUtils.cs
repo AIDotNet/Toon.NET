@@ -4,28 +4,28 @@ using System.Globalization;
 namespace AIDotNet.Toon.Internal.Shared
 {
     /// <summary>
-    /// 与 TypeScript 版 shared/literal-utils.ts 对齐的字面量判定工具。
-    /// - IsBooleanOrNullLiteral: 判断是否 true/false/null
-    /// - IsNumericLiteral: 判断是否为数值字面量，并拒绝不合法的前导零形式
+    /// Literal judgment utilities, aligned with TypeScript version shared/literal-utils.ts.
+    /// - IsBooleanOrNullLiteral: Determines if it is true/false/null
+    /// - IsNumericLiteral: Determines if it is a numeric literal, rejecting invalid leading zero forms
     /// </summary>
     internal static class LiteralUtils
     {
         /// <summary>
-        /// 检查 token 是否为布尔或 null 字面量：true、false、null。
-        /// 等价 TS: isBooleanOrNullLiteral
+        /// Checks if the token is a boolean or null literal: true, false, null.
+        /// Equivalent to TS: isBooleanOrNullLiteral
         /// </summary>
         internal static bool IsBooleanOrNullLiteral(string token)
         {
-            return string.Equals(token, "true", StringComparison.Ordinal)
-                || string.Equals(token, "false", StringComparison.Ordinal)
-                || string.Equals(token, "null", StringComparison.Ordinal);
+            return string.Equals(token, Constants.TRUE_LITERAL, StringComparison.Ordinal)
+                || string.Equals(token, Constants.FALSE_LITERAL, StringComparison.Ordinal)
+                || string.Equals(token, Constants.NULL_LITERAL, StringComparison.Ordinal);
         }
 
         /// <summary>
-        /// 检查 token 是否为有效数值字面量。
-        /// 规则与 TS 对齐：
-        /// - 拒绝前导零（除 "0" 自身或小数 "0.xxx"）
-        /// - 解析成功且为有限数值（非 NaN/Infinity）
+        /// Checks if the token is a valid numeric literal.
+        /// Rules aligned with TS:
+        /// - Rejects leading zeros (except "0" itself or decimals like "0.xxx")
+        /// - Parses successfully and is a finite number (not NaN/Infinity)
         /// </summary>
         internal static bool IsNumericLiteral(string token)
         {

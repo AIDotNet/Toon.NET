@@ -1,33 +1,45 @@
 #nullable enable
-using System.Runtime.CompilerServices;
-using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace AIDotNet.Toon.Internal.Encode
 {
     /// <summary>
-    /// 与 TypeScript 版 encode/encoders.ts 对齐的编码器实现。
-    /// 负责将 JsonElement 根据 TOON 规则编码为字符串。
+    /// Options for encoding TOON format, aligned with TypeScript ResolvedEncodeOptions.
+    /// </summary>
+    internal class ResolvedEncodeOptions
+    {
+        public int Indent { get; set; } = 2;
+        public char Delimiter { get; set; } = Constants.COMMA;
+        public bool LengthMarker { get; set; } = false;
+    }
+
+    /// <summary>
+    /// Main encoding functions for converting normalized JsonNode values to TOON format.
+    /// Aligned with TypeScript encode/encoders.ts
     /// </summary>
     internal static class Encoders
     {
         // #region Encode normalized JsonValue
 
-        internal static string EncodeValue(JsonElement value, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes a normalized JsonNode value to TOON format string.
+        /// </summary>
+        public static string EncodeValue(JsonNode? value, ResolvedEncodeOptions options)
         {
-            if (IsJsonPrimitive(value))
+            if (Normalize.IsJsonPrimitive(value))
             {
-                return Primitives.EncodePrimitive(value, options);
+                return Primitives.EncodePrimitive(value, options.Delimiter);
             }
 
             var writer = new LineWriter(options.Indent);
 
-            if (value.ValueKind == JsonValueKind.Array)
+            if (Normalize.IsJsonArray(value))
             {
-                EncodeArray(key: null, value, writer, depth: 0, options);
+                EncodeArray(null, (JsonArray)value!, writer, 0, options);
             }
-            else if (value.ValueKind == JsonValueKind.Object)
+            else if (Normalize.IsJsonObject(value))
             {
-                EncodeObject(value, writer, depth: 0, options);
+                EncodeObject((JsonObject)value!, writer, 0, options);
             }
 
             return writer.ToString();
@@ -37,37 +49,44 @@ namespace AIDotNet.Toon.Internal.Encode
 
         // #region Object encoding
 
-        private static void EncodeObject(JsonElement value, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes a JsonObject as key-value pairs.
+        /// </summary>
+        public static void EncodeObject(JsonObject value, LineWriter writer, int depth, ResolvedEncodeOptions options)
         {
-            foreach (var prop in value.EnumerateObject())
+            foreach (var kvp in value)
             {
-                EncodeKeyValuePair(prop.Name, prop.Value, writer, depth, options);
+                EncodeKeyValuePair(kvp.Key, kvp.Value, writer, depth, options);
             }
         }
 
-        private static void EncodeKeyValuePair(string key, JsonElement value, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes a single key-value pair.
+        /// </summary>
+        public static void EncodeKeyValuePair(string key, JsonNode? value, LineWriter writer, int depth, ResolvedEncodeOptions options)
         {
             var encodedKey = Primitives.EncodeKey(key);
-            if (IsJsonPrimitive(value))
+
+            if (Normalize.IsJsonPrimitive(value))
             {
-                writer.Push(depth, $"{encodedKey}: {Primitives.EncodePrimitive(value, options)}");
+                writer.Push(depth, $"{encodedKey}{Constants.COLON} {Primitives.EncodePrimitive(value, options.Delimiter)}");
             }
-            else if (value.ValueKind == JsonValueKind.Array)
+            else if (Normalize.IsJsonArray(value))
             {
-                EncodeArray(key, value, writer, depth, options);
+                EncodeArray(key, (JsonArray)value!, writer, depth, options);
             }
-            else if (value.ValueKind == JsonValueKind.Object)
+            else if (Normalize.IsJsonObject(value))
             {
-                // 空对象
-                var enumerator = value.EnumerateObject().GetEnumerator();
-                if (!enumerator.MoveNext())
+                var obj = (JsonObject)value!;
+                if (obj.Count == 0)
                 {
-                    writer.Push(depth, $"{encodedKey}:");
+                    // Empty object
+                    writer.Push(depth, $"{encodedKey}{Constants.COLON}");
                 }
                 else
                 {
-                    writer.Push(depth, $"{encodedKey}:");
-                    EncodeObject(value, writer, depth + 1, options);
+                    writer.Push(depth, $"{encodedKey}{Constants.COLON}");
+                    EncodeObject(obj, writer, depth + 1, options);
                 }
             }
         }
@@ -76,46 +95,52 @@ namespace AIDotNet.Toon.Internal.Encode
 
         // #region Array encoding
 
-        private static void EncodeArray(string? key, JsonElement value, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes a JsonArray with appropriate formatting (inline, tabular, or expanded).
+        /// </summary>
+        public static void EncodeArray(
+            string? key,
+            JsonArray value,
+            LineWriter writer,
+            int depth,
+            ResolvedEncodeOptions options)
         {
-            int length = value.GetArrayLength();
-
-            if (length == 0)
+            if (value.Count == 0)
             {
-                var header = Primitives.FormatHeader(0, options, key: key);
+                var header = Primitives.FormatHeader(0, key, null, options.Delimiter, options.LengthMarker);
                 writer.Push(depth, header);
                 return;
             }
 
-            // 原子数组 - 行内
-            if (IsArrayOfPrimitives(value))
+            // Primitive array
+            if (Normalize.IsArrayOfPrimitives(value))
             {
-                var formatted = EncodeInlineArrayLine(value, options, prefix: key);
+                var formatted = EncodeInlineArrayLine(value, options.Delimiter, key, options.LengthMarker);
                 writer.Push(depth, formatted);
                 return;
             }
 
-            // 数组的数组（所有子数组都是原子数组）
+            // Array of arrays (all primitives)
+            if (Normalize.IsArrayOfArrays(value))
             {
-                bool allPrimitivePrimitiveArrays = true;
-                foreach (var a in value.EnumerateArray())
+                var allPrimitiveArrays = value.All(item =>
+                    item is JsonArray arr && Normalize.IsArrayOfPrimitives(arr));
+
+                if (allPrimitiveArrays)
                 {
-                    if (!IsArrayOfPrimitives(a)) { allPrimitivePrimitiveArrays = false; break; }
-                }
-                if (allPrimitivePrimitiveArrays)
-                {
-                    EncodeArrayOfArraysAsListItems(key, value, writer, depth, options);
+                    EncodeArrayOfArraysAsListItems(key, value.Cast<JsonArray>().ToList(), writer, depth, options);
                     return;
                 }
             }
 
-            // 对象数组
-            if (IsArrayOfObjects(value))
+            // Array of objects
+            if (Normalize.IsArrayOfObjects(value))
             {
-                var headerFields = ExtractTabularHeader(value);
-                if (headerFields is not null)
+                var objects = value.Cast<JsonObject>().ToList();
+                var header = ExtractTabularHeader(objects);
+                if (header != null)
                 {
-                    EncodeArrayOfObjectsAsTabular(key, value, headerFields, writer, depth, options);
+                    EncodeArrayOfObjectsAsTabular(key, objects, header, writer, depth, options);
                 }
                 else
                 {
@@ -124,7 +149,7 @@ namespace AIDotNet.Toon.Internal.Encode
                 return;
             }
 
-            // 混合数组：回退到列表格式
+            // Mixed array: fallback to expanded format
             EncodeMixedArrayAsListItems(key, value, writer, depth, options);
         }
 
@@ -132,60 +157,84 @@ namespace AIDotNet.Toon.Internal.Encode
 
         // #region Array of arrays (expanded format)
 
-        private static void EncodeArrayOfArraysAsListItems(string? prefix, JsonElement values, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes an array of arrays as list items.
+        /// </summary>
+        public static void EncodeArrayOfArraysAsListItems(
+            string? prefix,
+            IReadOnlyList<JsonArray> values,
+            LineWriter writer,
+            int depth,
+            ResolvedEncodeOptions options)
         {
-            var header = Primitives.FormatHeader(values.GetArrayLength(), options, key: prefix);
+            var header = Primitives.FormatHeader(values.Count, prefix, null, options.Delimiter, options.LengthMarker);
             writer.Push(depth, header);
 
-            foreach (var arr in values.EnumerateArray())
+            foreach (var arr in values)
             {
-                if (IsArrayOfPrimitives(arr))
+                if (Normalize.IsArrayOfPrimitives(arr))
                 {
-                    var inline = EncodeInlineArrayLine(arr, options, prefix: null);
+                    var inline = EncodeInlineArrayLine(arr, options.Delimiter, null, options.LengthMarker);
                     writer.PushListItem(depth + 1, inline);
                 }
             }
         }
 
-        private static string EncodeInlineArrayLine(JsonElement values, ToonSerializerOptions options, string? prefix)
+        /// <summary>
+        /// Encodes an array as a single inline line with header.
+        /// </summary>
+        public static string EncodeInlineArrayLine(
+            JsonArray values,
+            char delimiter,
+            string? prefix = null,
+            bool lengthMarker = false)
         {
-            int len = values.GetArrayLength();
-            var header = Primitives.FormatHeader(len, options, key: prefix);
-
-            if (len == 0)
+            var header = Primitives.FormatHeader(values.Count, prefix, null, delimiter, lengthMarker);
+            
+            if (values.Count == 0)
             {
                 return header;
             }
 
-            var joined = Primitives.EncodeAndJoinPrimitives(values.EnumerateArray(), options);
-            return $"{header} {joined}";
+            var joinedValue = Primitives.EncodeAndJoinPrimitives(values, delimiter);
+            return $"{header} {joinedValue}";
         }
 
         // #endregion
 
         // #region Array of objects (tabular format)
 
-        private static void EncodeArrayOfObjectsAsTabular(string? prefix, JsonElement rows, IReadOnlyList<string> header, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes an array of objects in tabular format.
+        /// </summary>
+        public static void EncodeArrayOfObjectsAsTabular(
+            string? prefix,
+            IReadOnlyList<JsonObject> rows,
+            IReadOnlyList<string> header,
+            LineWriter writer,
+            int depth,
+            ResolvedEncodeOptions options)
         {
-            var formattedHeader = Primitives.FormatHeader(rows.GetArrayLength(), options, key: prefix, fields: header);
+            var formattedHeader = Primitives.FormatHeader(rows.Count, prefix, header, options.Delimiter, options.LengthMarker);
             writer.Push(depth, formattedHeader);
 
             WriteTabularRows(rows, header, writer, depth + 1, options);
         }
 
-        private static IReadOnlyList<string>? ExtractTabularHeader(JsonElement rows)
+        /// <summary>
+        /// Extracts a uniform header from an array of objects if all objects have the same keys.
+        /// Returns null if the array cannot be represented in tabular format.
+        /// </summary>
+        public static IReadOnlyList<string>? ExtractTabularHeader(IReadOnlyList<JsonObject> rows)
         {
-            if (rows.GetArrayLength() == 0) return null;
+            if (rows.Count == 0)
+                return null;
 
-            var first = rows[0];
-            if (first.ValueKind != JsonValueKind.Object) return null;
-
-            var firstKeys = new List<string>();
-            foreach (var p in first.EnumerateObject())
-            {
-                firstKeys.Add(p.Name);
-            }
-            if (firstKeys.Count == 0) return null;
+            var firstRow = rows[0];
+            var firstKeys = firstRow.Select(kvp => kvp.Key).ToList();
+            
+            if (firstKeys.Count == 0)
+                return null;
 
             if (IsTabularArray(rows, firstKeys))
             {
@@ -195,49 +244,51 @@ namespace AIDotNet.Toon.Internal.Encode
             return null;
         }
 
-        private static bool IsTabularArray(JsonElement rows, IReadOnlyList<string> header)
+        /// <summary>
+        /// Checks if an array of objects can be represented in tabular format.
+        /// All objects must have the same keys and all values must be primitives.
+        /// </summary>
+        public static bool IsTabularArray(
+            IReadOnlyList<JsonObject> rows,
+            IReadOnlyList<string> header)
         {
-            foreach (var row in rows.EnumerateArray())
+            foreach (var row in rows)
             {
-                if (row.ValueKind != JsonValueKind.Object) return false;
+                var keys = row.Select(kvp => kvp.Key).ToList();
 
-                // 键数必须一致
-                int rowKeyCount = 0;
-                foreach (var _ in row.EnumerateObject()) rowKeyCount++;
-                if (rowKeyCount != header.Count) return false;
+                // All objects must have the same keys (but order can differ)
+                if (keys.Count != header.Count)
+                    return false;
 
-                // 必须全部包含 header 的键，并且对应值为原子
+                // Check that all header keys exist in the row and all values are primitives
                 foreach (var key in header)
                 {
-                    if (!row.TryGetProperty(key, out var v)) return false;
-                    if (!IsJsonPrimitive(v)) return false;
+                    if (!row.ContainsKey(key))
+                        return false;
+
+                    if (!Normalize.IsJsonPrimitive(row[key]))
+                        return false;
                 }
             }
 
             return true;
         }
 
-        private static void WriteTabularRows(JsonElement rows, IReadOnlyList<string> header, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Writes tabular rows to the writer.
+        /// </summary>
+        private static void WriteTabularRows(
+            IReadOnlyList<JsonObject> rows,
+            IReadOnlyList<string> header,
+            LineWriter writer,
+            int depth,
+            ResolvedEncodeOptions options)
         {
-            var delimiter = options.GetDelimiterChar();
-            foreach (var row in rows.EnumerateArray())
+            foreach (var row in rows)
             {
-                System.Text.StringBuilder? sb = null;
-                for (int i = 0; i < header.Count; i++)
-                {
-                    var val = row.GetProperty(header[i]);
-                    var token = Primitives.EncodePrimitive(val, options);
-                    if (i == 0)
-                    {
-                        sb = new System.Text.StringBuilder(token.Length * header.Count + header.Count - 1);
-                        sb.Append(token);
-                    }
-                    else
-                    {
-                        sb!.Append(delimiter).Append(token);
-                    }
-                }
-                writer.Push(depth, sb?.ToString() ?? string.Empty);
+                var values = header.Select(key => row[key]).ToList();
+                var joinedValue = Primitives.EncodeAndJoinPrimitives(values, options.Delimiter);
+                writer.Push(depth, joinedValue);
             }
         }
 
@@ -245,93 +296,115 @@ namespace AIDotNet.Toon.Internal.Encode
 
         // #region Array of objects (expanded format)
 
-        private static void EncodeMixedArrayAsListItems(string? prefix, JsonElement items, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes a mixed array as list items (expanded format).
+        /// </summary>
+        public static void EncodeMixedArrayAsListItems(
+            string? prefix,
+            JsonArray items,
+            LineWriter writer,
+            int depth,
+            ResolvedEncodeOptions options)
         {
-            var header = Primitives.FormatHeader(items.GetArrayLength(), options, key: prefix);
+            var header = Primitives.FormatHeader(items.Count, prefix, null, options.Delimiter, options.LengthMarker);
             writer.Push(depth, header);
 
-            foreach (var item in items.EnumerateArray())
+            foreach (var item in items)
             {
                 EncodeListItemValue(item, writer, depth + 1, options);
             }
         }
 
-        private static void EncodeObjectAsListItem(JsonElement obj, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes an object as a list item with special formatting for the first property.
+        /// </summary>
+        public static void EncodeObjectAsListItem(JsonObject obj, LineWriter writer, int depth, ResolvedEncodeOptions options)
         {
-            var enumerator = obj.EnumerateObject().GetEnumerator();
-            if (!enumerator.MoveNext())
+            var keys = obj.Select(kvp => kvp.Key).ToList();
+            
+            if (keys.Count == 0)
             {
-                writer.Push(depth, Tokens.ListItemMarker.ToString());
+                writer.Push(depth, Constants.LIST_ITEM_MARKER.ToString());
                 return;
             }
 
-            // 第一对 key-value 与 "- " 同行
-            var first = enumerator.Current;
-            var firstKeyEncoded = Primitives.EncodeKey(first.Name);
-            var firstValue = first.Value;
+            // First key-value on the same line as "- "
+            var firstKey = keys[0];
+            var encodedKey = Primitives.EncodeKey(firstKey);
+            var firstValue = obj[firstKey];
 
-            if (IsJsonPrimitive(firstValue))
+            if (Normalize.IsJsonPrimitive(firstValue))
             {
-                writer.PushListItem(depth, $"{firstKeyEncoded}: {Primitives.EncodePrimitive(firstValue, options)}");
+                writer.PushListItem(depth, $"{encodedKey}{Constants.COLON} {Primitives.EncodePrimitive(firstValue, options.Delimiter)}");
             }
-            else if (firstValue.ValueKind == JsonValueKind.Array)
+            else if (Normalize.IsJsonArray(firstValue))
             {
-                if (IsArrayOfPrimitives(firstValue))
+                var arr = (JsonArray)firstValue!;
+                
+                if (Normalize.IsArrayOfPrimitives(arr))
                 {
-                    // 原子数组行内格式
-                    var inline = EncodeInlineArrayLine(firstValue, options, prefix: first.Name);
-                    writer.PushListItem(depth, inline);
+                    // Inline format for primitive arrays
+                    var formatted = EncodeInlineArrayLine(arr, options.Delimiter, firstKey, options.LengthMarker);
+                    writer.PushListItem(depth, formatted);
                 }
-                else if (IsArrayOfObjects(firstValue))
+                else if (Normalize.IsArrayOfObjects(arr))
                 {
-                    // 判断能否使用表格格式
-                    var header = ExtractTabularHeader(firstValue);
-                    if (header is not null)
+                    // Check if array of objects can use tabular format
+                    var objects = arr.Cast<JsonObject>().ToList();
+                    var header = ExtractTabularHeader(objects);
+                    
+                    if (header != null)
                     {
-                        var formattedHeader = Primitives.FormatHeader(firstValue.GetArrayLength(), options, key: first.Name, fields: header);
+                        // Tabular format for uniform arrays of objects
+                        var formattedHeader = Primitives.FormatHeader(arr.Count, firstKey, header, options.Delimiter, options.LengthMarker);
                         writer.PushListItem(depth, formattedHeader);
-                        WriteTabularRows(firstValue, header, writer, depth + 1, options);
+                        WriteTabularRows(objects, header, writer, depth + 1, options);
                     }
                     else
                     {
-                        // 回退：列表格式
-                        writer.PushListItem(depth, $"{firstKeyEncoded}[{firstValue.GetArrayLength()}]:");
-                        foreach (var it in firstValue.EnumerateArray())
+                        // Fall back to list format for non-uniform arrays of objects
+                        writer.PushListItem(depth, $"{encodedKey}{Constants.OPEN_BRACKET}{arr.Count}{Constants.CLOSE_BRACKET}{Constants.COLON}");
+                        foreach (var item in arr)
                         {
-                            EncodeObjectAsListItem(it, writer, depth + 1, options);
+                            if (item is JsonObject itemObj)
+                            {
+                                EncodeObjectAsListItem(itemObj, writer, depth + 1, options);
+                            }
                         }
                     }
                 }
                 else
                 {
-                    // 复杂数组换行
-                    writer.PushListItem(depth, $"{firstKeyEncoded}[{firstValue.GetArrayLength()}]:");
+                    // Complex arrays on separate lines (array of arrays, etc.)
+                    writer.PushListItem(depth, $"{encodedKey}{Constants.OPEN_BRACKET}{arr.Count}{Constants.CLOSE_BRACKET}{Constants.COLON}");
 
-                    foreach (var it in firstValue.EnumerateArray())
+                    // Encode array contents at depth + 1
+                    foreach (var item in arr)
                     {
-                        EncodeListItemValue(it, writer, depth + 1, options);
+                        EncodeListItemValue(item, writer, depth + 1, options);
                     }
                 }
             }
-            else if (firstValue.ValueKind == JsonValueKind.Object)
+            else if (Normalize.IsJsonObject(firstValue))
             {
-                var nestedEnumerator = firstValue.EnumerateObject().GetEnumerator();
-                if (!nestedEnumerator.MoveNext())
+                var nestedObj = (JsonObject)firstValue!;
+                
+                if (nestedObj.Count == 0)
                 {
-                    writer.PushListItem(depth, $"{firstKeyEncoded}:");
+                    writer.PushListItem(depth, $"{encodedKey}{Constants.COLON}");
                 }
                 else
                 {
-                    writer.PushListItem(depth, $"{firstKeyEncoded}:");
-                    EncodeObject(firstValue, writer, depth + 2, options);
+                    writer.PushListItem(depth, $"{encodedKey}{Constants.COLON}");
+                    EncodeObject(nestedObj, writer, depth + 2, options);
                 }
             }
 
-            // 其余键按缩进输出
-            while (enumerator.MoveNext())
+            // Remaining keys on indented lines
+            for (int i = 1; i < keys.Count; i++)
             {
-                var p = enumerator.Current;
-                EncodeKeyValuePair(p.Name, p.Value, writer, depth + 1, options);
+                var key = keys[i];
+                EncodeKeyValuePair(key, obj[key], writer, depth + 1, options);
             }
         }
 
@@ -339,68 +412,29 @@ namespace AIDotNet.Toon.Internal.Encode
 
         // #region List item encoding helpers
 
-        private static void EncodeListItemValue(JsonElement value, LineWriter writer, int depth, ToonSerializerOptions options)
+        /// <summary>
+        /// Encodes a value as a list item.
+        /// </summary>
+        private static void EncodeListItemValue(
+            JsonNode? value,
+            LineWriter writer,
+            int depth,
+            ResolvedEncodeOptions options)
         {
-            if (IsJsonPrimitive(value))
+            if (Normalize.IsJsonPrimitive(value))
             {
-                writer.PushListItem(depth, Primitives.EncodePrimitive(value, options));
+                writer.PushListItem(depth, Primitives.EncodePrimitive(value, options.Delimiter));
             }
-            else if (value.ValueKind == JsonValueKind.Array && IsArrayOfPrimitives(value))
+            else if (Normalize.IsJsonArray(value) && Normalize.IsArrayOfPrimitives((JsonArray)value!))
             {
-                var inline = EncodeInlineArrayLine(value, options, prefix: null);
+                var arr = (JsonArray)value!;
+                var inline = EncodeInlineArrayLine(arr, options.Delimiter, null, options.LengthMarker);
                 writer.PushListItem(depth, inline);
             }
-            else if (value.ValueKind == JsonValueKind.Object)
+            else if (Normalize.IsJsonObject(value))
             {
-                EncodeObjectAsListItem(value, writer, depth, options);
+                EncodeObjectAsListItem((JsonObject)value!, writer, depth, options);
             }
-        }
-
-        // #endregion
-
-        // #region Helpers: type guards
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsJsonPrimitive(JsonElement value)
-        {
-            return value.ValueKind == JsonValueKind.String
-                || value.ValueKind == JsonValueKind.Number
-                || value.ValueKind == JsonValueKind.True
-                || value.ValueKind == JsonValueKind.False
-                || value.ValueKind == JsonValueKind.Null;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsArrayOfPrimitives(JsonElement value)
-        {
-            if (value.ValueKind != JsonValueKind.Array) return false;
-            foreach (var item in value.EnumerateArray())
-            {
-                if (!IsJsonPrimitive(item)) return false;
-            }
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsArrayOfArrays(JsonElement value)
-        {
-            if (value.ValueKind != JsonValueKind.Array) return false;
-            foreach (var item in value.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Array) return false;
-            }
-            return true;
-        }
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static bool IsArrayOfObjects(JsonElement value)
-        {
-            if (value.ValueKind != JsonValueKind.Array) return false;
-            foreach (var item in value.EnumerateArray())
-            {
-                if (item.ValueKind != JsonValueKind.Object) return false;
-            }
-            return true;
         }
 
         // #endregion

@@ -17,6 +17,7 @@ internal static class Formatters
 {
     private static readonly JsonSerializerOptions Pretty = new() { WriteIndented = true };
     private static readonly JsonSerializerOptions Compact = new() { WriteIndented = false };
+
     private static readonly ISerializer Yaml = new SerializerBuilder()
         .WithNamingConvention(CamelCaseNamingConvention.Instance)
         .ConfigureDefaultValuesHandling(DefaultValuesHandling.OmitNull)
@@ -29,7 +30,7 @@ internal static class Formatters
             BenchmarkFormat.Toon => ToonSerializer.Serialize(data, new ToonSerializerOptions
             {
                 Indent = 2,
-                Delimiter = ToonDelimiter.Comma,
+                Delimiter = ToonDelimiter.COMMA,
                 Strict = true,
                 LengthMarker = null
             }),
@@ -66,7 +67,9 @@ internal sealed class BenchmarkTask
     public string Instruction { get; init; } = string.Empty;
     public Func<object> BuildInput { get; init; } = () => new { };
     public Func<object, string> ExpectedAnswer { get; init; } = _ => string.Empty;
-    public Func<string, object, bool> Scorer { get; init; } = (answer, input) => string.Equals(answer.Trim(), "", StringComparison.OrdinalIgnoreCase);
+
+    public Func<string, object, bool> Scorer { get; init; } = (answer, input) =>
+        string.Equals(answer.Trim(), "", StringComparison.OrdinalIgnoreCase);
 }
 
 internal static class TaskCatalog
@@ -130,12 +133,24 @@ internal static class TaskCatalog
                     phone = $"+1-202-{rng.Next(100, 999)}-{rng.Next(1000, 9999)}",
                     addresses = new[]
                     {
-                        new { type = "home", city = "Seattle", zip = $"{rng.Next(10000,99999)}",
-                              location = new { lat = Math.Round(rng.NextDouble()*90,4), lon = Math.Round(rng.NextDouble()*180,4) },
-                              lines = new[] { "Line1", "Line2" } },
-                        new { type = "work", city = "San Francisco", zip = $"{rng.Next(10000,99999)}",
-                              location = new { lat = Math.Round(rng.NextDouble()*90,4), lon = Math.Round(rng.NextDouble()*180,4) },
-                              lines = new[] { "Market St", "Suite 500" } }
+                        new
+                        {
+                            type = "home", city = "Seattle", zip = $"{rng.Next(10000, 99999)}",
+                            location = new
+                            {
+                                lat = Math.Round(rng.NextDouble() * 90, 4), lon = Math.Round(rng.NextDouble() * 180, 4)
+                            },
+                            lines = new[] { "Line1", "Line2" }
+                        },
+                        new
+                        {
+                            type = "work", city = "San Francisco", zip = $"{rng.Next(10000, 99999)}",
+                            location = new
+                            {
+                                lat = Math.Round(rng.NextDouble() * 90, 4), lon = Math.Round(rng.NextDouble() * 180, 4)
+                            },
+                            lines = new[] { "Market St", "Suite 500" }
+                        }
                     },
                     preferences = new { newsletter = rng.NextDouble() > 0.5, smsOptIn = rng.NextDouble() > 0.7 },
                     company = new
@@ -151,7 +166,7 @@ internal static class TaskCatalog
                     {
                         at = DateTime.UtcNow.AddDays(-i).ToString("o"),
                         action = i % 2 == 0 ? "login" : "purchase",
-                        details = new { channel = i % 2 == 0 ? "web" : "mobile", ip = $"10.0.0.{rng.Next(1,255)}" }
+                        details = new { channel = i % 2 == 0 ? "web" : "mobile", ip = $"10.0.0.{rng.Next(1, 255)}" }
                     }).ToArray()
                 },
                 meta = new { source = "crm", requestId = $"req-{rng.Next(100000, 999999)}" }
@@ -184,8 +199,13 @@ internal static class TaskCatalog
                         sku = $"SKU{i:000}",
                         qty = rng.Next(1, 5),
                         price = Math.Round(rng.NextDouble() * 20 + 5, 2),
-                        supplier = new { id = $"SUP-{rng.Next(100,999)}", name = rng.NextDouble() > 0.5 ? "Acme" : "Globex" },
-                        dimensions = new { w = Math.Round(rng.NextDouble() * 10 + 1, 2), h = Math.Round(rng.NextDouble() * 10 + 1, 2), d = Math.Round(rng.NextDouble() * 10 + 1, 2) },
+                        supplier = new
+                            { id = $"SUP-{rng.Next(100, 999)}", name = rng.NextDouble() > 0.5 ? "Acme" : "Globex" },
+                        dimensions = new
+                        {
+                            w = Math.Round(rng.NextDouble() * 10 + 1, 2), h = Math.Round(rng.NextDouble() * 10 + 1, 2),
+                            d = Math.Round(rng.NextDouble() * 10 + 1, 2)
+                        },
                         tags = new[] { "fragile", i % 2 == 0 ? "promo" : "regular" }
                     })
                     .ToArray(),
@@ -212,7 +232,8 @@ internal static class TaskCatalog
         {
             Id = "sentiment",
             Name = "情感分类",
-            Instruction = "Given the input with a field 'text', classify sentiment as exactly one word: positive or negative. Return only that word.",
+            Instruction =
+                "Given the input with a field 'text', classify sentiment as exactly one word: positive or negative. Return only that word.",
             BuildInput = () => new
             {
                 text = rng.NextDouble() > 0.5
@@ -221,12 +242,12 @@ internal static class TaskCatalog
                 context = new { lang = "en", channel = "web" },
                 user = new
                 {
-                    id = $"U{rng.Next(1000,9999)}",
+                    id = $"U{rng.Next(1000, 9999)}",
                     profile = new { age = rng.Next(18, 70), region = rng.NextDouble() > 0.5 ? "NA" : "EU" }
                 },
                 thread = new
                 {
-                    id = $"T{rng.Next(10000,99999)}",
+                    id = $"T{rng.Next(10000, 99999)}",
                     messages = Enumerable.Range(0, rng.Next(2, 5)).Select(i => new
                     {
                         id = i + 1,
@@ -247,14 +268,17 @@ internal static class TaskCatalog
                 var json = JsonSerializer.Serialize(input);
                 using var doc = JsonDocument.Parse(json);
                 var text = doc.RootElement.GetProperty("text").GetString() ?? "";
-                return text.Contains("loved", StringComparison.OrdinalIgnoreCase) || text.Contains("flawlessly", StringComparison.OrdinalIgnoreCase)
-                    ? "positive" : "negative";
+                return text.Contains("loved", StringComparison.OrdinalIgnoreCase) ||
+                       text.Contains("flawlessly", StringComparison.OrdinalIgnoreCase)
+                    ? "positive"
+                    : "negative";
             },
             Scorer = (answer, input) =>
             {
                 var got = answer.Trim().ToLowerInvariant();
                 got = got.Replace(".", "");
-                var exp = TaskCatalog.All().First(t => t.Id == "sentiment").ExpectedAnswer(input).Trim().ToLowerInvariant();
+                var exp = TaskCatalog.All().First(t => t.Id == "sentiment").ExpectedAnswer(input).Trim()
+                    .ToLowerInvariant();
                 return got == exp;
             }
         };
@@ -264,12 +288,13 @@ internal static class TaskCatalog
         {
             Id = "total-revenue",
             Name = "总收入",
-            Instruction = "Given an array of orders with 'price' and 'quantity', compute total revenue as a number with two decimals. Return only the number.",
+            Instruction =
+                "Given an array of orders with 'price' and 'quantity', compute total revenue as a number with two decimals. Return only the number.",
             BuildInput = () => new
             {
                 currency = "USD",
                 channel = rng.NextDouble() > 0.5 ? "online" : "retail",
-                store = new { id = $"S{rng.Next(100,999)}", region = rng.NextDouble() > 0.5 ? "APAC" : "EMEA" },
+                store = new { id = $"S{rng.Next(100, 999)}", region = rng.NextDouble() > 0.5 ? "APAC" : "EMEA" },
                 orders = Enumerable.Range(0, rng.Next(2, 5))
                     .Select(i => new
                     {
@@ -279,8 +304,13 @@ internal static class TaskCatalog
                         quantity = rng.Next(1, 5),
                         tax = Math.Round(rng.NextDouble() * 0.2, 2),
                         discount = rng.NextDouble() > 0.7 ? Math.Round(rng.NextDouble() * 5, 2) : 0,
-                        shipping = new { method = rng.NextDouble() > 0.5 ? "air" : "ground", cost = Math.Round(rng.NextDouble() * 10, 2) },
-                        customer = new { id = $"C{rng.Next(1000,9999)}", tier = rng.NextDouble() > 0.5 ? "gold" : "silver" }
+                        shipping = new
+                        {
+                            method = rng.NextDouble() > 0.5 ? "air" : "ground",
+                            cost = Math.Round(rng.NextDouble() * 10, 2)
+                        },
+                        customer = new
+                            { id = $"C{rng.Next(1000, 9999)}", tier = rng.NextDouble() > 0.5 ? "gold" : "silver" }
                     })
                     .ToArray(),
                 meta = new { batch = rng.Next(1, 1000) }
@@ -296,20 +326,25 @@ internal static class TaskCatalog
                     var qty = ord.GetProperty("quantity").GetInt32();
                     sum += price * qty;
                 }
+
                 return Math.Round(sum, 2).ToString("0.00", System.Globalization.CultureInfo.InvariantCulture);
             },
             Scorer = (answer, input) =>
             {
                 var s = answer.Trim();
                 // normalize number
-                if (!double.TryParse(s, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var got))
+                if (!double.TryParse(s, System.Globalization.NumberStyles.Float,
+                        System.Globalization.CultureInfo.InvariantCulture, out var got))
                 {
                     // try to extract first number
                     var digits = new string(s.Where(ch => char.IsDigit(ch) || ch == '.' || ch == '-').ToArray());
-                    if (!double.TryParse(digits, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out got))
+                    if (!double.TryParse(digits, System.Globalization.NumberStyles.Float,
+                            System.Globalization.CultureInfo.InvariantCulture, out got))
                         return false;
                 }
-                var exp = double.Parse(TaskCatalog.All().First(t => t.Id == "total-revenue").ExpectedAnswer(input), System.Globalization.CultureInfo.InvariantCulture);
+
+                var exp = double.Parse(TaskCatalog.All().First(t => t.Id == "total-revenue").ExpectedAnswer(input),
+                    System.Globalization.CultureInfo.InvariantCulture);
                 return Math.Abs(got - exp) < 0.01;
             }
         };
@@ -319,14 +354,16 @@ internal static class TaskCatalog
         {
             Id = "sort-numbers",
             Name = "数字排序",
-            Instruction = "Given an array named numbers, return the numbers in ascending order as a single comma-separated list with no spaces (e.g., 1,2,3). Return only that list.",
+            Instruction =
+                "Given an array named numbers, return the numbers in ascending order as a single comma-separated list with no spaces (e.g., 1,2,3). Return only that list.",
             BuildInput = () => new
             {
                 numbers = Enumerable.Range(0, rng.Next(8, 13)).Select(_ => rng.Next(0, 100)).ToArray(),
                 info = new { source = "generated", allowDuplicates = true },
                 extra = new
                 {
-                    matrix = Enumerable.Range(0, 3).Select(_ => Enumerable.Range(0, 3).Select(__ => rng.Next(0, 10)).ToArray()).ToArray(),
+                    matrix = Enumerable.Range(0, 3)
+                        .Select(_ => Enumerable.Range(0, 3).Select(__ => rng.Next(0, 10)).ToArray()).ToArray(),
                     notes = new[]
                     {
                         new { k = "hint", v = "ascending" },
@@ -338,7 +375,8 @@ internal static class TaskCatalog
             {
                 var json = JsonSerializer.Serialize(input);
                 using var doc = JsonDocument.Parse(json);
-                var nums = doc.RootElement.GetProperty("numbers").EnumerateArray().Select(x => x.GetInt32()).OrderBy(x => x).ToArray();
+                var nums = doc.RootElement.GetProperty("numbers").EnumerateArray().Select(x => x.GetInt32())
+                    .OrderBy(x => x).ToArray();
                 return string.Join(',', nums);
             },
             Scorer = (answer, input) =>
@@ -349,7 +387,8 @@ internal static class TaskCatalog
                 if (!parts.All(p => int.TryParse(p, out _))) return false;
                 var got = parts.Select(int.Parse).ToArray();
                 var expStr = TaskCatalog.All().First(t => t.Id == "sort-numbers").ExpectedAnswer(input);
-                var exp = expStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries).Select(int.Parse).ToArray();
+                var exp = expStr.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+                    .Select(int.Parse).ToArray();
                 return got.SequenceEqual(exp);
             }
         };
@@ -359,7 +398,8 @@ internal static class TaskCatalog
         {
             Id = "unique-count",
             Name = "唯一值计数",
-            Instruction = "Given an array named values containing strings, return only the count of unique values as an integer.",
+            Instruction =
+                "Given an array named values containing strings, return only the count of unique values as an integer.",
             BuildInput = () => new
             {
                 values = Enumerable.Range(0, rng.Next(10, 15))
@@ -377,7 +417,8 @@ internal static class TaskCatalog
             {
                 var json = JsonSerializer.Serialize(input);
                 using var doc = JsonDocument.Parse(json);
-                var set = new HashSet<string>(doc.RootElement.GetProperty("values").EnumerateArray().Select(x => x.GetString() ?? ""));
+                var set = new HashSet<string>(doc.RootElement.GetProperty("values").EnumerateArray()
+                    .Select(x => x.GetString() ?? ""));
                 return set.Count.ToString();
             },
             Scorer = (answer, input) =>
@@ -394,7 +435,8 @@ internal static class TaskCatalog
         {
             Id = "date-diff",
             Name = "日期差值",
-            Instruction = "Given fields start and end as dates in yyyy-MM-dd, return only the number of days between end and start as an integer.",
+            Instruction =
+                "Given fields start and end as dates in yyyy-MM-dd, return only the number of days between end and start as an integer.",
             BuildInput = () =>
             {
                 var baseDate = new DateTime(2025, 1, 1).AddDays(rng.Next(0, 60));
@@ -417,8 +459,10 @@ internal static class TaskCatalog
             {
                 var json = JsonSerializer.Serialize(input);
                 using var doc = JsonDocument.Parse(json);
-                var start = DateTime.Parse(doc.RootElement.GetProperty("start").GetString()!, null, System.Globalization.DateTimeStyles.AssumeUniversal).Date;
-                var end = DateTime.Parse(doc.RootElement.GetProperty("end").GetString()!, null, System.Globalization.DateTimeStyles.AssumeUniversal).Date;
+                var start = DateTime.Parse(doc.RootElement.GetProperty("start").GetString()!, null,
+                    System.Globalization.DateTimeStyles.AssumeUniversal).Date;
+                var end = DateTime.Parse(doc.RootElement.GetProperty("end").GetString()!, null,
+                    System.Globalization.DateTimeStyles.AssumeUniversal).Date;
                 return (end - start).Days.ToString();
             },
             Scorer = (answer, input) =>
@@ -435,7 +479,8 @@ internal static class TaskCatalog
         {
             Id = "sum-qty-price-gt",
             Name = "超过阈值数量求和",
-            Instruction = "Given an array items with fields price and qty, and a field threshold, return only the sum of qty for items where price > threshold as an integer.",
+            Instruction =
+                "Given an array items with fields price and qty, and a field threshold, return only the sum of qty for items where price > threshold as an integer.",
             BuildInput = () =>
             {
                 var threshold = Math.Round(20 + rng.NextDouble() * 60, 2);
@@ -454,7 +499,10 @@ internal static class TaskCatalog
                         extra = new
                         {
                             category = rng.NextDouble() > 0.5 ? "A" : "B",
-                            attrs = new { weight = Math.Round(rng.NextDouble() * 5, 2), fragile = rng.NextDouble() > 0.6 }
+                            attrs = new
+                            {
+                                weight = Math.Round(rng.NextDouble() * 5, 2), fragile = rng.NextDouble() > 0.6
+                            }
                         }
                     }).ToArray(),
                     meta = new { batch = rng.Next(100, 999) }
@@ -472,6 +520,7 @@ internal static class TaskCatalog
                     var qty = it.GetProperty("qty").GetInt32();
                     if (price > threshold) sum += qty;
                 }
+
                 return sum.ToString();
             },
             Scorer = (answer, input) =>
@@ -488,7 +537,8 @@ internal static class TaskCatalog
         {
             Id = "max-score-name",
             Name = "最高分名称",
-            Instruction = "Given an array entries with fields name (string) and score (number), return only the name of the entry with the highest score.",
+            Instruction =
+                "Given an array entries with fields name (string) and score (number), return only the name of the entry with the highest score.",
             BuildInput = () => new
             {
                 entries = Enumerable.Range(0, rng.Next(3, 7))
@@ -506,15 +556,18 @@ internal static class TaskCatalog
             {
                 var json = JsonSerializer.Serialize(input);
                 using var doc = JsonDocument.Parse(json);
-                string name = ""; double best = double.MinValue;
+                string name = "";
+                double best = double.MinValue;
                 foreach (var e in doc.RootElement.GetProperty("entries").EnumerateArray())
                 {
                     var sc = e.GetProperty("score").GetDouble();
                     if (sc > best)
                     {
-                        best = sc; name = e.GetProperty("name").GetString() ?? "";
+                        best = sc;
+                        name = e.GetProperty("name").GetString() ?? "";
                     }
                 }
+
                 return name;
             },
             Scorer = (answer, input) =>
@@ -530,7 +583,8 @@ internal static class TaskCatalog
         {
             Id = "primary-postal",
             Name = "主地址邮编",
-            Instruction = "From the profile.addresses array, return only the postalCode of the address where primary is true.",
+            Instruction =
+                "From the profile.addresses array, return only the postalCode of the address where primary is true.",
             BuildInput = () =>
             {
                 var count = rng.Next(2, 5);
@@ -542,7 +596,8 @@ internal static class TaskCatalog
                         primary = i == primaryIndex,
                         city = $"City{rng.Next(1, 50)}",
                         country = "US",
-                        location = new { lat = Math.Round(rng.NextDouble() * 90, 4), lon = Math.Round(rng.NextDouble() * 180, 4) },
+                        location = new
+                            { lat = Math.Round(rng.NextDouble() * 90, 4), lon = Math.Round(rng.NextDouble() * 180, 4) },
                         lines = new[] { "Addr Line 1", "Addr Line 2" }
                     })
                     .ToArray();
@@ -551,7 +606,11 @@ internal static class TaskCatalog
                     profile = new
                     {
                         name = $"User-{rng.Next(1000, 9999)}",
-                        contacts = new[] { new { type = "email", value = "u@example.com" }, new { type = "phone", value = "+1-555-0100" } },
+                        contacts = new[]
+                        {
+                            new { type = "email", value = "u@example.com" },
+                            new { type = "phone", value = "+1-555-0100" }
+                        },
                         addresses
                     }
                 };
@@ -565,6 +624,7 @@ internal static class TaskCatalog
                     if (a.GetProperty("primary").GetBoolean())
                         return a.GetProperty("postalCode").GetString() ?? string.Empty;
                 }
+
                 return string.Empty;
             },
             Scorer = (answer, input) =>
@@ -580,7 +640,8 @@ internal static class TaskCatalog
         {
             Id = "bool-logic",
             Name = "布尔逻辑",
-            Instruction = "Given boolean fields a, b, c, evaluate (a AND NOT b) OR c and return only 'true' or 'false'.",
+            Instruction =
+                "Given boolean fields a, b, c, evaluate (a AND NOT b) OR c and return only 'true' or 'false'.",
             BuildInput = () => new
             {
                 a = rng.NextDouble() > 0.5,
@@ -589,7 +650,7 @@ internal static class TaskCatalog
                 rule = "(a AND NOT b) OR c",
                 context = new
                 {
-                    evaluationId = $"E{rng.Next(10000,99999)}",
+                    evaluationId = $"E{rng.Next(10000, 99999)}",
                     history = Enumerable.Range(0, 3).Select(i => new
                     {
                         a = i % 2 == 0,
@@ -614,7 +675,8 @@ internal static class TaskCatalog
             {
                 var got = (answer ?? string.Empty).Trim().ToLowerInvariant();
                 if (got.EndsWith(".")) got = got.TrimEnd('.');
-                var exp = TaskCatalog.All().First(t => t.Id == "bool-logic").ExpectedAnswer(input).Trim().ToLowerInvariant();
+                var exp = TaskCatalog.All().First(t => t.Id == "bool-logic").ExpectedAnswer(input).Trim()
+                    .ToLowerInvariant();
                 return got == exp;
             }
         };
